@@ -4,8 +4,23 @@ import telebot
 import time
 from datetime import datetime
 import pytz
+import threading
+from http.server import SimpleHTTPRequestHandler, HTTPServer
 
-# 1. הגדרת מפתחות ומשתני סביבה מהשרת
+# 1. הפעלת שרת דמי קליל כדי ש-Render החינמי לא יקרוס
+def start_dummy_server():
+    try:
+        port = int(os.environ.get("PORT", 10000))
+        server = HTTPServer(('0.0.0.0', port), SimpleHTTPRequestHandler)
+        print(f"Dummy server started on port {port}")
+        server.serve_forever()
+    except Exception as e:
+        print(f"Dummy server error: {e}")
+
+# הרצת שרת הדמי ברקע לפני הכל
+threading.Thread(target=start_dummy_server, daemon=True).start()
+
+# 2. הגדרת מפתחות ומשתני סביבה מהשרת
 TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
 CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID')
 ALI_API_KEY = os.environ.get('ALI_API_KEY')
@@ -29,13 +44,13 @@ def get_hot_products():
         'tracking_id': TRACKING_ID,
         'keywords': search_query,
         'sort': 'VOLUME_DESC',
-        'page_size': 40  # הגדלנו את הכמות כדי שנוכל לבחור 3 מוצרים טובים
+        'page_size': 40
     }
     try:
         response = requests.get(url, params=params).json()
         return response.get('result', {}).get('products', [])
     except Exception as e:
-        print(f"שגיאה במשיכת מוצרים: {e}")
+        print(f"Error fetching products: {e}")
         return []
 
 def check_and_post_3_products():
@@ -46,7 +61,7 @@ def check_and_post_3_products():
     
     for product in products:
         if posted_count >= 3:
-            break  # עצרנו אחרי שפרסמנו בהצלחה 3 מוצרים
+            break
             
         try:
             original_price = float(product.get('original_price', 0))
@@ -64,7 +79,7 @@ def check_and_post_3_products():
         price_in_ils = sale_price * 3.65
         should_post = False
         
-        # סינון לפי התנאים שלך
+        # תנאי הסינון שלך
         if price_in_ils < 120 and discount_percent >= 30:
             should_post = True
         elif price_in_ils > 200 and discount_percent >= 50:
@@ -76,17 +91,16 @@ def check_and_post_3_products():
                 f"🔥 **דיל חם ואטרקטיבי!** 🔥\n\n"
                 f"📦 **מוצר:** {short_description}...\n"
                 f"💰 **מחיר:** {price_in_ils:.2f} ₪\n"
-                f"降低 **הנחה:** {discount_percent:.0f}%\n\n"
+                f"📉 **הנחה:** {discount_percent:.0f}%\n\n"
                 f"👇 **לרכישה מהירה לחצו כאן:**\n{affiliate_link}"
             )
             try:
                 bot.send_photo(CHAT_ID, image_url, caption=message_text, parse_mode='Markdown')
-                # שמירה לסיכום היומי
                 daily_deals_summary.append({"title": short_description, "link": affiliate_link})
                 posted_count += 1
-                time.sleep(5)  # מרווח קצר של 5 שניות בין מוצר למוצר כדי לא להעמיס
+                time.sleep(5)
             except Exception as e:
-                print(f"שגיאה בשליחת פוסט לטלגרם: {e}")
+                print(f"Telegram send error: {e}")
 
 def send_daily_summary():
     """שליחת סיכום יומי של כל הדילים שנאספו במהלך היום"""
@@ -104,39 +118,37 @@ def send_daily_summary():
     
     try:
         bot.send_message(CHAT_ID, summary_text, parse_mode='Markdown', disable_web_page_preview=True)
-        print("הודעת סיכום יומי נשלחה בהצלחה!")
-        daily_deals_summary = []  # איפוס הרשימה ליום המחרת
+        print("Daily summary posted successfully!")
+        daily_deals_summary = []
     except Exception as e:
-        print(f"שגיאה בשליחת סיכום יומי: {e}")
+        print(f"Summary send error: {e}")
 
 def main_loop():
-    print("הבוט המשודרג הופעל ורץ ברקע...")
+    print("The upgraded bot is now running in the background...")
     
     while True:
-        # בדיקת הזמן הנוכחי לפי שעון ישראל
         now = datetime.now(israel_tz)
-        day_of_week = now.weekday()  # 4 = שישי, 5 = שבת, 6 = ראשון וכו'
+        day_of_week = now.weekday()  # 4 = שישי, 5 = שבת
         hour = now.hour
         minute = now.minute
 
-        # 1. בדיקת השבתה (מיום שישי ב-15:00 עד מוצ"ש ב-20:00)
+        # 1. השבתת שבת (משישי ב-15:00 עד מוצ"ש ב-20:00)
         if (day_of_week == 4 and hour >= 15) or (day_of_week == 5 and hour < 20):
-            print(f"זמן מנוחה (שבת). השעה כעת: {now.strftime('%H:%M')}. הבוט ממתין...")
-            time.sleep(1800)  # בדיקה חוזרת כל חצי שעה
+            print(f"Sabbat mode active. Time: {now.strftime('%H:%M')}. Waiting...")
+            time.sleep(1800)
             continue
 
-        # 2. שליחת סיכום יום (בכל יום רגיל בשעה 23:00 בלילה)
+        # 2. שליחת סיכום יום (בכל יום בשעה 23:00)
         if hour == 23 and minute < 10:
             send_daily_summary()
-            time.sleep(600)  # שינה ל-10 דקות כדי לא לשלוח פעמיים באותה שעה
+            time.sleep(600)
             continue
 
-        # 3. הרצה שעתית קבועה (רק בין 08:00 בבוקר ל-22:59 בלילה כדי לא להציק למשתמשים בלילה)
+        # 3. הרצה שעתית (רק בין 08:00 בבוקר ל-22:59 בלילה)
         if 8 <= hour <= 22:
-            print(f"מפעיל ריצה שעתית: מפרסם 3 מוצרים... ({now.strftime('%H:%M')})")
+            print(f"Hourly trigger activated at {now.strftime('%H:%M')}")
             check_and_post_3_products()
             
-        # המתנה של שעה שלמה (3600 שניות) עד לסבב הבא
         time.sleep(3600)
 
 if __name__ == "__main__":
