@@ -31,7 +31,7 @@ HOT_DEALS_DATABASE = [
     {"id": "1005006321948501", "title": "רמקול בלוטות' אלחוטי חסין מים Anker Soundcore 2 - באס מטורף וסאונד נקי", "price": 145.0, "discount": 42, "emoji": "🔊"},
     {"id": "1005005112349583", "title": "משקפת מקצועית עוצמתית HD לטיולים, שטח, טבע וצפייה בכוכבים", "price": 79.0, "discount": 55, "emoji": "🔭"},
     {"id": "1005006093849502", "title": "שואב אבק אלחוטי נטען לרכב ולבית בעוצמת שאיבה מטורפת 9000PA", "price": 54.0, "discount": 60, "emoji": "🧹"},
-    {"id": "1005005991827493", "title": "נעלי ריצה וספורט גברים קלות ונושמות בעיצוב אופנתי ונוחות שיא", "price": 139.0, "discount": 48, "emoji": "sneaker"}
+    {"id": "1005005991827493", "title": "נעלי ריצה וספורט גברים קלות ונושמות בעיצוב אופנתי ונוחות שיא", "price": 139.0, "discount": 48, "emoji": "👟"}
 ]
 
 last_posted_index = 0
@@ -46,13 +46,13 @@ def run_auto_post_cycle():
     discount = item["discount"]
     pid = item["id"]
     title = item["title"]
-    emoji = item["emoji"] if item["emoji"] != "sneaker" else "👟"
+    emoji = item["emoji"]
     
     # קידום התור לחצי שעה הבאה
     last_posted_index = (last_posted_index + 1) % len(HOT_DEALS_DATABASE)
     
-    # תיקון הקישור: הוספת לוכסן, /item/ וסימן שאלה עבור הפרמטרים
-    affiliate_link = f"https://aliexpress.com{pid}.html?tracking_id={TRACKING_ID}"
+    # בניית הקישור בפורמט הרשמי והנכון של אליאקספרס
+    affiliate_link = f"https://aliexpress.com{pid}.html"
     
     # טקסט נקי, ברור ומקצועי ללא תגיות מורכבות שמחרבות את הפוסט
     message_text = (
@@ -101,3 +101,4 @@ if __name__ == "__main__":
         
     # הפעלה יציבה של הבוט
     bot.infinity_polling(timeout=10, long_polling_timeout=5)
+
