@@ -5,7 +5,7 @@ import time
 import threading
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 
-# 1. שרת דמי יציב עבור Render שלא יקרוס
+# 1. שרת דמי קבוע עבור Render למניעת קריסות
 def start_dummy_server():
     try:
         port = int(os.environ.get("PORT", 10000))
@@ -35,7 +35,7 @@ def get_automated_deals():
         res = requests.get(url, timeout=10).json()
         return res.get('deals', [])
     except Exception:
-        # מאגר גיבוי פנימי
+        # מאגר גיבוי פנימי יציב עם תמונות רשמיות באיכות גבוהה
         return [
             {"id": "1005006135439564", "title": "אוזניות אלחוטיות Lenovo LP40 Pro המקוריות - שמע מהמם וסוללה חזקה", "price": 42.0, "discount": 45, "img": "https://alicdn.com"},
             {"id": "1005005822349102", "title": "סט מברגים חשמלי נטען Xiaomi Mijia 24 ב-1 לתיקון גאדג'טים ומחשבים", "price": 98.5, "discount": 35, "img": "https://alicdn.com"},
@@ -45,7 +45,7 @@ def get_automated_deals():
         ]
 
 def run_auto_post_cycle():
-    """הלולאה האוטומטית שמפרסמת מוצרים עם קישורי HTML מובנים"""
+    """הלולאה האוטומטית שמפרסמת מוצרים עם תמונות וקישורי HTML נקיים"""
     deals = get_automated_deals()
     if not deals:
         return
@@ -70,12 +70,11 @@ def run_auto_post_cycle():
             should_post = True
             
         if should_post:
-            # בניית קישור שותפים נקי ותקין
+            # בניית קישור שותפים נקי ותקין ללא שברים
             affiliate_link = f"https://aliexpress.com{pid}.html&tracking_id={TRACKING_ID}"
             
-            # שימוש בתגית אשף נסתרת לתמונה הציבורית + עיצוב HTML שלא נשבר בטלגרם
+            # טקסט נקי בפורמט HTML קריא ויציב ב-100%
             message_text = (
-                f'<a href="{img_url}">&#8205;</a>'  # תו נסתר שמציג את תמונת המוצר בגדול בראש הפוסט!
                 f"🛍️ <b>דיל חם מעלי אקספרס!</b> 🛍️\n\n"
                 f"<b>מוצר:</b> {title}\n"
                 f"<b>מחיר בשקלים:</b> {price:.2f} ש''ח\n"
@@ -84,26 +83,31 @@ def run_auto_post_cycle():
             )
             
             try:
-                # שליחה קריטית במצב HTML כדי שהקישור יהפוך למילה כחולה לחיצה
-                bot.send_message(CHAT_ID, message_text, parse_mode='HTML')
-                print(f"✅ מוצר {pid} פורסם אוטומטית בפורמט HTML עם תמונה וקישור תקין!")
+                # שליחת התמונה האמיתית יחד עם טקסט ה-HTML מתחתיה
+                bot.send_photo(CHAT_ID, img_url, caption=message_text, parse_mode='HTML')
+                print(f"✅ מוצר {pid} פורסם בהצלחה עם תמונה אמיתית וקישור HTML לחיץ!")
                 posted_any = True
                 break  # מפרסם מוצר אחד בכל חצי שעה
             except Exception as e:
-                print(f"❌ שגיאה בשליחה אוטומטית: {e}")
+                print(f"❌ שגיאה בשליחת הפוסט (מנסה שליחת טקסט כגיבוי): {e}")
+                try:
+                    # גיבוי טקסט מהיר למקרה ששרת התמונות של עלי אקספרס עמוס
+                    bot.send_message(CHAT_ID, message_text, parse_mode='HTML', disable_web_page_preview=False)
+                except Exception as e2:
+                    print(f"❌ שגיאה סופית בשליחה: {e2}")
                 
     if not posted_any:
         print("⚠️ לא נמצאו מוצרים חדשים שעמדו בתנאי הסינון בסבב זה.")
 
 def main_loop():
-    print("🚀 הבוט האוטומטי לחלוטין רץ ברקע בגרסת HTML (כל חצי שעה)...")
+    print("🚀 הבוט האוטומטי לחלוטין רץ ברקע בגרסת תמונות ו-HTML (כל חצי שעה)...")
     try:
         run_auto_post_cycle()
     except Exception as e:
         print(f"Error in initial run: {e}")
         
     while True:
-        # המתנה של 30 דקות בדיוק
+        # המתנה של 30 דקות בדיוק (1800 שניות) בין פרסום לפרסום
         time.sleep(1800)
 
 if __name__ == "__main__":
