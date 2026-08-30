@@ -5,7 +5,7 @@ import time
 import threading
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 
-# 1. שרת דמי יציב עבור Render כדי שלא יקרוס בחינם
+# 1. שרת דמי יציב עבור Render כדי שלא יקרוס
 def start_dummy_server():
     try:
         port = int(os.environ.get("PORT", 10000))
@@ -24,7 +24,7 @@ TRACKING_ID = os.environ.get('TRACKING_ID', 'default')
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
-# מאגר הדילים הוויראליים והחמים ביותר בטלגרם (גאדג'טים, אלקטרוניקה, כלי בית ונעלי גברים)
+# מאגר הדילים הוויראליים (גאדג'טים, אלקטרוניקה, כלי בית ונעלי גברים - ללא נשים)
 HOT_DEALS_DATABASE = [
     {"id": "1005006135439564", "title": "אוזניות אלחוטיות Lenovo LP40 Pro המקוריות - שמע מהמם וסוללה חזקה", "price": 42.0, "discount": 45, "img": "https://alicdn.com"},
     {"id": "1005005822349102", "title": "סט מברגים חשמלי נטען Xiaomi Mijia 24 ב-1 לתיקון גאדג'טים ומחשבים", "price": 98.5, "discount": 35, "img": "https://alicdn.com"},
@@ -39,14 +39,13 @@ HOT_DEALS_DATABASE = [
 ]
 
 def generate_clean_affiliate_link(product_id):
-    """בניית קישור שותפים מובנה ונקי עם ה-Tracking ID שלך"""
-    return f"https://aliexpress.com{product_id}&dl_target_url=https://aliexpress.com{product_id}.html&tracking_id={TRACKING_ID}"
+    """בניית קישור שותפים ישיר ומובנה שמשייך את הקנייה אליך"""
+    return f"https://aliexpress.com{product_id}.html&tracking_id={TRACKING_ID}"
 
 def run_bot_cycle():
-    """לולאת הפרסום - שולחת מוצרים שעומדים בתנאי המחיר וההנחה שלך"""
     print("🔄 מתחיל סבב פרסום מוצרים מהמאגר...")
-    
     posted_count = 0
+    
     for item in HOT_DEALS_DATABASE:
         price = item["price"]
         discount = item["discount"]
@@ -54,7 +53,6 @@ def run_bot_cycle():
         title = item["title"]
         img = item["img"]
         
-        # החלת חוקי הסינון המדויקים שלך:
         should_post = False
         if price <= 120 and discount >= 25:
             should_post = True
@@ -73,27 +71,27 @@ def run_bot_cycle():
             )
             
             try:
-                # שליחת התמונה יחד עם הטקסט של הדיל
                 bot.send_photo(CHAT_ID, img, caption=message_text, parse_mode='Markdown')
-                print(f"✅ מוצר {pid} נשלח בהצלחה לערוץ עם ה-ID: {TRACKING_ID}!")
+                print(f"✅ מוצר {pid} נשלח בהצלחה לערוץ!")
                 posted_count += 1
-                time.sleep(10)  # הפסקה של 10 שניות בין מוצר למוצר כדי למנוע הצפה
+                time.sleep(15)  # הפסקה קלה בין ההודעות
             except Exception as e:
-                print(f"❌ שגיאה בשליחת הודעה לטלגרם: {e}")
+                print(f"❌ שגיאה בשליחת הודעה: {e}")
                 
     if posted_count == 0:
-        print("⚠️ לא נמצאו מוצרים שעמדו בתנאי הסינון בסבב זה.")
+        print("⚠️ לא נמצאו מוצרים שעמדו בתנאי הסינון.")
 
 def main_loop():
-    print("🚀 הבוט העוקף והבטוח פועל כעת בהצלחה ברקע...")
-    # שליחה ראשונה מיידית עם עליית השרת כדי שתראה תוצאות עכשיו!
+    print("🚀 הבוט העוקף פועל כעת בהצלחה ברקע...")
+    
+    # הפעלה ראשונה מיידית ברגע שהשרת עולה
     try:
         run_bot_cycle()
     except Exception as e:
         print(f"Error in initial run: {e}")
         
     while True:
-        # המתנה של שעתיים בין סבב פרסומים אחד למשנהו כדי לשמור על ערוץ מקצועי
+        # סבב פרסום חדש כל שעתיים
         time.sleep(7200)
 
 if __name__ == "__main__":
