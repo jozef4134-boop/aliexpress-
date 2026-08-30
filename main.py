@@ -24,12 +24,12 @@ TRACKING_ID = os.environ.get('TRACKING_ID', 'default')
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
-# מאגר הדילים הוויראליים (גאדג'טים, אלקטרוניקה, כלי בית ונעלי גברים - ללא נשים)
+# מאגר הדילים הוויראליים (גאדג'טים, אלקטרוניקה, כלי בית ונעלי גברים)
 HOT_DEALS_DATABASE = [
     {"id": "1005006135439564", "title": "אוזניות אלחוטיות Lenovo LP40 Pro המקוריות - שמע מהמם וסוללה חזקה", "price": 42.0, "discount": 45, "img": "https://alicdn.com"},
     {"id": "1005005822349102", "title": "סט מברגים חשמלי נטען Xiaomi Mijia 24 ב-1 לתיקון גאדג'טים ומחשבים", "price": 98.5, "discount": 35, "img": "https://alicdn.com"},
     {"id": "1005006321948501", "title": "רמקול בלוטות' אלחוטי חסין מים Anker Soundcore 2 - באס מטורף", "price": 145.0, "discount": 42, "img": "https://alicdn.com"},
-    {"id": "1005005112349583", "title": "משקפת מקצועית עוצמתית HD לטיולים, שטח וצפייה בכוכבים", "price": 79.0, "discount": 55, "img": "https://alicdn.com"},
+    {"id": "1005005112349583", "title": "משקפת מקצועית עוצשתית HD לטיולים, שטח וצפייה בכוכבים", "price": 79.0, "discount": 55, "img": "https://alicdn.com"},
     {"id": "1005006093849502", "title": "שואב אבק אלחוטי נטען לרכב ולבית בעוצמת שאיבה מטורפת 9000PA", "price": 54.0, "discount": 60, "img": "https://alicdn.com"},
     {"id": "1005005991827493", "title": "נעלי ריצה וספורט גברים קלות ונושמות בעיצוב אופנתי ונוחות שיא", "price": 139.0, "discount": 48, "img": "https://alicdn.com"},
     {"id": "1005006410294850", "title": "משאבת אוויר חשמלית דיגיטלית ניידת לרכב, קורקינט וכדורים", "price": 112.0, "discount": 38, "img": "https://alicdn.com"},
@@ -39,7 +39,6 @@ HOT_DEALS_DATABASE = [
 ]
 
 def generate_clean_affiliate_link(product_id):
-    """בניית קישור שותפים ישיר ומובנה שמשייך את הקנייה אליך"""
     return f"https://aliexpress.com{product_id}.html&tracking_id={TRACKING_ID}"
 
 def run_bot_cycle():
@@ -62,19 +61,20 @@ def run_bot_cycle():
         if should_post:
             affiliate_link = generate_clean_affiliate_link(pid)
             
+            # טקסט נקי בלי עיצובים מורכבים שיכולים לשבור את טלגרם
             message_text = (
-                f"🔥 **דיל מטורף מעלי אקספרס!** 🔥\n\n"
-                f"📦 **מוצר:** {title}\n"
-                f"💰 **מחיר בשקלים:** ₪{price:.2f}\n"
-                f"📉 **אחוז הנחה:** {discount}%\n\n"
-                f"🛒 **לקנייה ישירה לחצו כאן:**\n{affiliate_link}"
+                f"דיל מטורף מעלי אקספרס!\n\n"
+                f"מוצר: {title}\n"
+                f"מחיר בשקלים: {price:.2f} ש''ח\n"
+                f"אחוז הנחה: {discount}%\n\n"
+                f"לקנייה ישירה לחצו כאן:\n{affiliate_link}"
             )
             
             try:
-                bot.send_photo(CHAT_ID, img, caption=message_text, parse_mode='Markdown')
+                bot.send_photo(CHAT_ID, img, caption=message_text)
                 print(f"✅ מוצר {pid} נשלח בהצלחה לערוץ!")
                 posted_count += 1
-                time.sleep(15)  # הפסקה קלה בין ההודעות
+                time.sleep(15)
             except Exception as e:
                 print(f"❌ שגיאה בשליחת הודעה: {e}")
                 
@@ -83,15 +83,12 @@ def run_bot_cycle():
 
 def main_loop():
     print("🚀 הבוט העוקף פועל כעת בהצלחה ברקע...")
-    
-    # הפעלה ראשונה מיידית ברגע שהשרת עולה
     try:
         run_bot_cycle()
     except Exception as e:
         print(f"Error in initial run: {e}")
         
     while True:
-        # סבב פרסום חדש כל שעתיים
         time.sleep(7200)
 
 if __name__ == "__main__":
