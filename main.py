@@ -24,40 +24,37 @@ TRACKING_ID = os.environ.get('TRACKING_ID', 'default')
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
-# מאגר דילים יציב וחסין - עם קישורי תמונות ישירים שלא חסומים בטלגרם!
+# מאגר הדילים היציב ביותר - ללא שדות תמונה שבורים!
 HOT_DEALS_DATABASE = [
     {
         "title": "🧰 סט מברגים חשמלי נטען Xiaomi Mijia 24 ב-1 לתיקון גאדג'טים, מחשבים וסלולר", 
         "price": 98.5, 
         "discount": 35, 
         "emoji": "🛠️",
-        "link": "https://aliexpress.com",
-        "image": "https://alicdn.com" # קישור תמונה רשמי ישיר
+        "link": "https://aliexpress.com"
     },
     {
         "title": "🔊 רמקול בלוטות' אלחוטי חסין מים Anker Soundcore 2 - באס מטורף וסאונד נקי", 
         "price": 145.0, 
         "discount": 42, 
         "emoji": "🎵",
-        "link": "https://aliexpress.com",
-        "image": "https://alicdn.com"
+        "link": "https://aliexpress.com"
     },
     {
         "title": "🎁 מרכז הקופונים הרשמי של אלי אקספרס! כנסו לאסוף קופוני חנות והנחות שוות לפני כולם", 
         "price": 0.0, 
         "discount": 100, 
         "emoji": "🏷️",
-        "link": "https://aliexpress.com",
-        "image": "https://alicdn.com"
+        "link": "https://aliexpress.com"
     }
 ]
 
 last_posted_index = 0
 
 def run_auto_post_cycle():
-    """לולאה נקייה ללא סריקות אתרים שבורות - 100% יציבות"""
+    """לולאה חסינת קריסות שמשתמשת בתצוגה המקדימה של טלגרם להצגת התמונה"""
     global last_posted_index
-    print("🔄 מפעיל סבב פרסום בטוח עם קישורים מוכנים...")
+    print("🔄 מפעיל סבב פרסום בטוח וחסין...")
     
     item = HOT_DEALS_DATABASE[last_posted_index]
     price = item["price"]
@@ -65,11 +62,10 @@ def run_auto_post_cycle():
     title = item["title"]
     emoji = item["emoji"]
     base_link = item["link"]
-    image_url = item["image"]
     
     last_posted_index = (last_posted_index + 1) % len(HOT_DEALS_DATABASE)
     
-    # הדבקת ה-Tracking ID בצורה הכי נקייה שיש
+    # הדבקת ה-Tracking ID בצורה נקייה ונורמלית לקוד
     if "?" in base_link:
         affiliate_link = f"{base_link}&trackingId={TRACKING_ID}"
     else:
@@ -80,7 +76,9 @@ def run_auto_post_cycle():
     else:
         price_text = "<b>מחיר:</b> קופוני הנחה משתנים! 🎁\n"
 
+    # עיצוב מנצח: שמנו את הקישור בהתחלה עם סימן קטן, כך שטלגרם תציג מעליו את תמונת המוצר לבד ובאופן אוטומטי!
     message_text = (
+        f"<a href='{affiliate_link}'>&#8205;</a>" # קוד בלתי נראה שמכריח את טלגרם לשים את התמונה של אליאקספרס בראש הפוסט!
         f"{emoji} <b>דיל חם מעלי אקספרס!</b> {emoji}\n\n"
         f"<b>מוצר:</b> {title}\n"
         f"{price_text}"
@@ -90,8 +88,9 @@ def run_auto_post_cycle():
     )
     
     try:
-        bot.send_photo(CHAT_ID, image_url, caption=message_text, parse_mode='HTML')
-        print(f"🎯 הצלחה! מוצר פורסם בצורה תקינה עם קישור כחול עובד!")
+        # שליחת הודעת טקסט רגילה במצב HTML - ללא פונקציית שליחת קבצים שבורה
+        bot.send_message(CHAT_ID, message_text, parse_mode='HTML', disable_web_page_preview=False)
+        print(f"🎯 הצלחה מוחלטת! הפוסט עלה בצורה מושלמת עם תצוגת תמונה אוטומטית של טלגרם!")
     except Exception as e:
         print(f"❌ שגיאה בשליחה: {e}")
 
