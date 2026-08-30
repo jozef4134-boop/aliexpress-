@@ -1,11 +1,10 @@
 import os
 import requests
-import telebot
 import time
 import threading
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 
-# 1. שרת דמי קבוע עבור Render למניעת קריסות
+# 1. שרת דמי עבור Render למניעת קריסות של השרות
 def start_dummy_server():
     try:
         port = int(os.environ.get("PORT", 10000))
@@ -17,47 +16,42 @@ def start_dummy_server():
 
 threading.Thread(target=start_dummy_server, daemon=True).start()
 
-# 2. הגדרות ומשתני סביבה מהשרת (Render)
+# 2. הגדרות ומשתני סביבה מהשרת
 TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
 CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID')
 TRACKING_ID = os.environ.get('TRACKING_ID', 'default')
 
-bot = telebot.TeleBot(TELEGRAM_TOKEN)
-
-# מאגר דילים יציב וחסין - עם קישורי תמונות ישירים שלא חסומים בטלגרם!
+# מאגר הדילים והקופונים היציב והנקי ביותר (ללא נשים)
 HOT_DEALS_DATABASE = [
     {
         "title": "🧰 סט מברגים חשמלי נטען Xiaomi Mijia 24 ב-1 לתיקון גאדג'טים, מחשבים וסלולר", 
         "price": 98.5, 
         "discount": 35, 
         "emoji": "🛠️",
-        "link": "https://aliexpress.com",
-        "image": "https://alicdn.com" # קישור תמונה רשמי ישיר
+        "link": "https://aliexpress.com"
     },
     {
         "title": "🔊 רמקול בלוטות' אלחוטי חסין מים Anker Soundcore 2 - באס מטורף וסאונד נקי", 
         "price": 145.0, 
         "discount": 42, 
         "emoji": "🎵",
-        "link": "https://aliexpress.com",
-        "image": "https://alicdn.com"
+        "link": "https://aliexpress.com"
     },
     {
         "title": "🎁 מרכז הקופונים הרשמי של אלי אקספרס! כנסו לאסוף קופוני חנות והנחות שוות לפני כולם", 
         "price": 0.0, 
         "discount": 100, 
         "emoji": "🏷️",
-        "link": "https://aliexpress.com",
-        "image": "https://alicdn.com"
+        "link": "https://aliexpress.com"
     }
 ]
 
 last_posted_index = 0
 
 def run_auto_post_cycle():
-    """לולאה נקייה ללא סריקות אתרים שבורות - 100% יציבות"""
+    """פונקציה חסינה השולחת הודעה ישירות באמצעות Telegram API ללא ספריות בוטים"""
     global last_posted_index
-    print("🔄 מפעיל סבב פרסום בטוח עם קישורים מוכנים...")
+    print("🔄 מפעיל סבב פרסום בטוח לחלוטין...")
     
     item = HOT_DEALS_DATABASE[last_posted_index]
     price = item["price"]
@@ -65,11 +59,10 @@ def run_auto_post_cycle():
     title = item["title"]
     emoji = item["emoji"]
     base_link = item["link"]
-    image_url = item["image"]
     
     last_posted_index = (last_posted_index + 1) % len(HOT_DEALS_DATABASE)
     
-    # הדבקת ה-Tracking ID בצורה הכי נקייה שיש
+    # הצמדת ה-Tracking ID בצורה הנקייה והמדויקת ביותר
     if "?" in base_link:
         affiliate_link = f"{base_link}&trackingId={TRACKING_ID}"
     else:
@@ -80,7 +73,9 @@ def run_auto_post_cycle():
     else:
         price_text = "<b>מחיר:</b> קופוני הנחה משתנים! 🎁\n"
 
+    # קוד המכריח את טלגרם להציג את תמונת המוצר מאליאקספרס בראש הפוסט באופן אוטומטי
     message_text = (
+        f"<a href='{affiliate_link}'>&#8205;</a>" 
         f"{emoji} <b>דיל חם מעלי אקספרס!</b> {emoji}\n\n"
         f"<b>מוצר:</b> {title}\n"
         f"{price_text}"
@@ -89,30 +84,38 @@ def run_auto_post_cycle():
         f"{affiliate_link}"
     )
     
+    # שליחה ישירה לשרתים של טלגרם באמצעות בקשת POST פשוטה
+    telegram_url = f"https://telegram.org{TELEGRAM_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": CHAT_ID,
+        "text": message_text,
+        "parse_mode": "HTML",
+        "disable_web_page_preview": False
+    }
+    
     try:
-        bot.send_photo(CHAT_ID, image_url, caption=message_text, parse_mode='HTML')
-        print(f"🎯 הצלחה! מוצר פורסם בצורה תקינה עם קישור כחול עובד!")
+        response = requests.post(telegram_url, json=payload, timeout=10)
+        if response.status_code == 200:
+            print("🎯 הצלחה מוחלטת! הפוסט עלה בצורה מושלמת ונורמלית לערוץ!")
+        else:
+            print(f"⚠️ טלגרם החזירה שגיאה: {response.text}")
     except Exception as e:
-        print(f"❌ שגיאה בשליחה: {e}")
+        print(f"❌ שגיאה בשליחת בקשת הרשת: {e}")
 
-def posting_loop():
-    time.sleep(5)
+def main_loop():
+    print("🚀 הבוט האוטומטי והחסין החל לפעול...")
+    # שליחה ראשונית מיידית
     try:
         run_auto_post_cycle()
     except Exception as e:
         print(f"Error in initial run: {e}")
         
     while True:
-        time.sleep(300) # כל 5 דקות בדיוק פוסט חדש
+        time.sleep(300) # פרסום קבוע בכל 5 דקות בדיוק
+        try:
+            run_auto_post_cycle()
+        except Exception as e:
+            print(f"Error in cycle run: {e}")
 
 if __name__ == "__main__":
-    print("🚀 הבוט האוטומטי מתחיל לעבוד...")
-    try:
-        bot.remove_webhook()
-        bot.get_updates(offset=-1)
-        time.sleep(1)
-    except:
-        pass
-        
-    threading.Thread(target=posting_loop, daemon=True).start()
-    bot.infinity_polling(timeout=20, long_polling_timeout=10)
+    main_loop()
