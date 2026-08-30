@@ -25,7 +25,7 @@ TRACKING_ID = os.environ.get('TRACKING_ID', 'default')
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
-# מאגר הדילים והקופונים - שדה image_url הוסר! הבוט יביא את התמונה לבד!
+# מאגר הדילים והקופונים האוטומטי - מעוצב וללא נשים
 HOT_DEALS_DATABASE = [
     {
         "id": "1005006135439564", 
@@ -45,7 +45,7 @@ HOT_DEALS_DATABASE = [
     },
     {
         "id": "page_coupons", 
-        "title": "🎁 מרכז הקופונים הרשמי של אלי אקספרס! ככנסו לאסוף קופוני חנות והנחות שוות לפני כולם", 
+        "title": "🎁 מרכז הקופונים הרשמי של אלי אקספרס! כנסו לאסוף קופוני חנות והנחות שוות לפני כולם", 
         "price": 0.0, 
         "discount": 100, 
         "emoji": "🏷️",
@@ -80,14 +80,12 @@ def fetch_aliexpress_image(url):
     try:
         response = requests.get(url, headers=headers, timeout=10)
         if response.status_code == 200:
-            # חיפוש תמונות שמסתיימות ב- .jpg מתוך קוד העמוד של אליאקספרס
             images = re.findall(r'https://img\.alicdn\.com/[^\s"\']+\.jpg', response.text)
             if images:
-                return images[0] # מחזיר את התמונה הראשונה שנמצאה
+                return images[0]
     except Exception as e:
         print(f"⚠️ לא הצלחתי לשלוף תמונה אוטומטית: {e}")
     
-    # תמונת גיבוי כללית למקרה שאליאקספרס חסמה את הסריקה באותו רגע
     return "https://unsplash.com"
 
 def run_auto_post_cycle():
@@ -105,7 +103,7 @@ def run_auto_post_cycle():
     
     last_posted_index = (last_posted_index + 1) % len(HOT_DEALS_DATABASE)
     
-    # בניית הקישור הגולמי
+    # 1. בניית הקישור הבסיסי הנקי בצורה רשמית
     if custom_url:
         raw_link = custom_url
     else:
@@ -114,11 +112,11 @@ def run_auto_post_cycle():
     # שליפת התמונה באופן אוטומטי מהאתר
     image_url = fetch_aliexpress_image(raw_link)
     
-    # הצמדת ה-Tracking ID שלך לקישור
+    # 2. תיקון קריטי: מבנה פרמטרים נקי ומדויק לקישורי שותפים באליאקספרס
     if "?" in raw_link:
-        affiliate_link = f"{raw_link}&sourceType=affiliate&trackingId={TRACKING_ID}"
+        affiliate_link = f"{raw_link}&sourceType=affiliate&affiliateId={TRACKING_ID}"
     else:
-        affiliate_link = f"{raw_link}?sourceType=affiliate&trackingId={TRACKING_ID}"
+        affiliate_link = f"{raw_link}?sourceType=affiliate&affiliateId={TRACKING_ID}"
     
     if price > 0:
         price_text = f"<b>מחיר בשקלים:</b> {price:.2f} ש''ח\n"
@@ -138,7 +136,7 @@ def run_auto_post_cycle():
     try:
         # שליחת התמונה האוטומטית והטקסט
         bot.send_photo(CHAT_ID, image_url, caption=message_text, parse_mode='HTML')
-        print(f"🎯 הצלחה מוחלטת! פוסט עם תמונה אוטומטית שוגר בהצלחה!")
+        print(f"🎯 הצלחה מוחלטת! פוסט עם קישור מתוקן שוגר בהצלחה!")
     except Exception as e:
         print(f"❌ שגיאה בשליחת הודעה: {e}")
 
@@ -151,7 +149,7 @@ def posting_loop():
         print(f"Error in initial run: {e}")
         
     while True:
-        time.sleep(300) # השהייה של 300 שניות (5 דקות) בדיוק
+        time.sleep(300) # השהייה של 5 דקות בדיוק
         try:
             run_auto_post_cycle()
         except Exception as e:
