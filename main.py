@@ -69,21 +69,24 @@ def run_auto_post_cycle():
             should_post = True
             
         if should_post:
+            # בניית קישור שותפים תקין לחלוטין ללא שברים
             affiliate_link = f"https://aliexpress.com{pid}.html&tracking_id={TRACKING_ID}"
             
+            # שימוש בפורמט Markdown קלאסי כדי להסתיר את הקישור בתוך טקסט ולפתוח תצוגה מקדימה של תמונה
             message_text = (
-                f"🛍️ דיל חם מעלי אקספרס! 🛍️\n\n"
-                f"מוצר: {title}\n"
-                f"מחיר בשקלים: {price:.2f} ש''ח\n"
-                f"אחוז הנחה: {discount}%\n\n"
-                f"🛒 לקנייה ישירה לחצו כאן:\n{affiliate_link}"
+                f"🛍️ *דיל חם מעלי אקספרס!* 🛍️\n\n"
+                f"*מוצר:* {title}\n"
+                f"*מחיר בשקלים:* {price:.2f} ש''ח\n"
+                f"*אחוז הנחה:* {discount}%\n\n"
+                f"🛒 [לחצו כאן לקנייה ישירה]({affiliate_link})"
             )
             
             try:
-                bot.send_message(CHAT_ID, message_text, disable_web_page_preview=False)
-                print(f"✅ מוצר {pid} פורסם אוטומטית בהצלחה!")
+                # הפעלת parse_mode ופתיחת התצוגה המקדימה לתמונה אוטומטית
+                bot.send_message(CHAT_ID, message_text, parse_mode='Markdown', disable_web_page_preview=False)
+                print(f"✅ מוצר {pid} פורסם אוטומטית עם קישור מוסתר ותמונה!")
                 posted_any = True
-                break  # מפרסם מוצר אחד בכל חצי שעה כדי לשמור על ערוץ מקצועי
+                break  # מפרסם מוצר אחד בכל חצי שעה
             except Exception as e:
                 print(f"❌ שגיאה בשליחה אוטומטית: {e}")
                 
@@ -92,15 +95,13 @@ def run_auto_post_cycle():
 
 def main_loop():
     print("🚀 הבוט האוטומטי לחלוטין רץ ברקע (כל חצי שעה)...")
-    
-    # ריצה ראשונה מיידית עם עליית השרת
     try:
         run_auto_post_cycle()
     except Exception as e:
         print(f"Error in initial run: {e}")
         
     while True:
-        # המתנה של 30 דקות בדיוק (1800 שניות) בין פרסום לפרסום
+        # המתנה של 30 דקות בדיוק (1800 שניות)
         time.sleep(1800)
 
 if __name__ == "__main__":
