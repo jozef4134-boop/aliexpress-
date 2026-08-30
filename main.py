@@ -8,7 +8,7 @@ import threading
 import re
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 
-# 1. שרת דמי עבור Render
+# 1. שרת דמי עבור Render החינמי
 def start_dummy_server():
     try:
         port = int(os.environ.get("PORT", 10000))
@@ -28,41 +28,31 @@ TRACKING_ID = os.environ.get('TRACKING_ID', 'default')
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 israel_tz = pytz.timezone('Asia/Jerusalem')
 
-# מילים אסורות לסינון בגדי נשים
 FORBIDDEN_WORDS = ["שמלה", "חצאית", "חזיה", "תחתון נשים", "עקבים", "בגדי נשים", "נשים", "אישה", "women", "dress", "skirt"]
 
 def clean_and_convert_link(original_link):
-    """חילוץ מזהה המוצר ובניית קישור שותפים נקי עם ה-Tracking ID שלך"""
+    """חילוץ מזהה מוצר ובניית קישור שותפים ישיר"""
     try:
-        # איתור מספר מזהה המוצר (Product ID) מתוך הקישור
         product_id_match = re.search(r'item/(\d+)\.html', original_link)
         if not product_id_match:
             product_id_match = re.search(r'(\d+)\.html', original_link)
             
         if product_id_match:
             pid = product_id_match.group(1)
-            # בניית קישור שותפים ישיר ומובנה שמשייך את הקנייה אליך
-            return f"https://aliexpress.com{pid}&dl_target_url=https://aliexpress.com{pid}.html&aff_short_key=_d7Yxxxxx&dl_target_url=https://aliexpress.com{pid}.html?_rcmd_id=rcmd&tracking_id={TRACKING_ID}"
+            return f"https://aliexpress.com{pid}&dl_target_url=https://aliexpress.com{pid}.html&tracking_id={TRACKING_ID}"
         
-        # גיבוי במידת הצורך
         return f"https://aliexpress.com{original_link}&tracking_id={TRACKING_ID}"
     except Exception as e:
         print(f"Error converting link: {e}")
         return original_link
 
 def fetch_deals_from_source():
-    """משיכת הודעות אחרונות מערוץ מבצעים פתוח בטלגרם"""
-    # שימוש בערוץ דילים כללי של עלי אקספרס כמקור למוצרים חמים
+    """משיכת מבצעים חמים מערוץ ציבורי פתוח"""
     source_channel = "AliExpress_Deals_Channel" 
-    url = f"https://telegram.org{TELEGRAM_TOKEN}/getChatHistory" # במידה והבוט חבר שם, או שימוש ב-Scraper קל
-    
-    # חלופה יציבה: משיכה דרך ה-Web API הציבורי של טלגרם ללא צורך בהתחברות
     web_url = f"https://t.me{source_channel}"
     try:
         print("🔄 סורק מוצרים חמים מהרשת...")
         res = requests.get(web_url).text
-        
-        # חילוץ פוסטים, קישורים ומחירים באמצעות קוד פשוט
         raw_links = re.findall(r'href="(https://[^\s"]+aliexpress\.com/[^\s"]+)"', res)
         return list(set(raw_links))[:5]
     except Exception as e:
@@ -70,10 +60,10 @@ def fetch_deals_from_source():
         return []
 
 def run_bot_cycle():
-    """סבב בדיקה ופרסום מוצרים מהיר"""
+    """בדיקת המוצרים ושליחה לערוץ"""
     links = fetch_deals_from_source()
     if not links:
-        print("⚠️ לא נמצאו דילים חדשים ברשת ברגע זה.")
+        print("⚠️ לא נמצאו דילים חדשים כרגע.")
         return
 
     posted = 0
@@ -81,42 +71,40 @@ def run_bot_cycle():
         if posted >= 3:
             break
             
-        # הדמיית נתונים לצורך הבדיקה המהירה שלך
-        title = "גאדג'ט פופולרי מעלי אקספרס"
-        price_in_ils = 85.0 # דוגמה למוצר מתחת ל-120
+        title = "גאדג'ט מבוקש מעלי אקספרס"
+        price_in_ils = 74.0  # מוצר לדוגמה מתחת ל-120
         discount_percent = 35
         
-        # סינון בגדי נשים
         if any(word in title for word in FORBIDDEN_WORDS):
             continue
 
         my_affiliate_link = clean_and_convert_link(link)
         
         message_text = (
-            f"🔥 **דיל חם ואטרקטיבי שהולך חזק בטלגרם!** 🔥\n\n"
+            f"🔥 **דיל חם מהרשת!** 🔥\n\n"
             f"📦 **מוצר:** {title}\n"
-            f"💰 **מחיר בארץ:** {price_in_ils:.2f} ₪\n"
-            f"📉 **הנחה מטורפת:** {discount_percent}%\n\n"
-            f"👇 **לרכישה מהירה דרך הערוץ שלנו:**\n{my_affiliate_link}"
+            f"💰 **מחיר בשקלים:** {price_in_ils:.2f} ₪\n"
+            f"📉 **הנחה:** {discount_percent}%\n\n"
+            f"👇 **לקנייה מהירה לחצו כאן:**\n{my_affiliate_link}"
         )
         
         try:
             bot.send_message(CHAT_ID, message_text, parse_mode='Markdown')
-            print(f"✅ הודעה נשלחה בהצלחה לערוץ עם ה-Tracking ID שלך!")
+            print(f"✅ הודעה נשלחה בהצלחה לערוץ עם ה-Tracking ID: {TRACKING_ID}")
             posted += 1
             time.sleep(5)
         except Exception as e:
             print(f"Error sending to channel: {e}")
 
 def main_loop():
-    print("🚀 הבוט החדש והעוקף פועל ברקע...")
+    print("🚀 הבוט החדש פועל כעת ברקע...")
     while True:
         try:
             run_bot_cycle()
         except Exception as e:
             print(f"Error in cycle: {e}")
         
-        # מוגדר ל-15 שניות כדי שתוכל לראות את התוצאה מיידית בטלגרם!
+        # הרצה מהירה כל 15 שניות כדי שתראה תוצאות מיידיות בטלגרם
         time.sleep(15)
 
 if __name__ == "__main__":
