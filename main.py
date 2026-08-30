@@ -1,12 +1,11 @@
 import os
 import requests
 import telebot
-import time
 import threading
 import re
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 
-# 1. שרת דמי יציב עבור Render
+# 1. שרת דמי יציב עבור Render שלא יקרוס
 def start_dummy_server():
     try:
         port = int(os.environ.get("PORT", 10000))
@@ -25,14 +24,10 @@ TRACKING_ID = os.environ.get('TRACKING_ID', 'default')
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
-# ערוצי המקור שביקשת
-SOURCE_CHANNELS = ["DilimShavimA", "israel_deals"]
-
-# מילים לסינון בגדי נשים
-FORBIDDEN_WORDS = ["שמלה", "חצאית", "חזיה", "תחתון נשים", "עקבים", "בגדי נשים", "אישה", "women", "dress", "skirt"]
-
 def fix_and_convert_link(text):
-    """איתור קישורי עלי אקספרס והמרתם לקישור שותפים תקין לחלוטין"""
+    """איתור קישורי עלי אקספרס והמרתם לקישור שותפים תקין ומובנה"""
+    if not text:
+        return ""
     urls = re.findall(r'(https?://[^\s]+aliexpress[^\s]+|https?://s\.click\.[^\s]+)', text)
     new_text = text
     
@@ -50,75 +45,42 @@ def fix_and_convert_link(text):
             
         new_text = new_text.replace(original_url, my_link)
         
+    # הסרת קישורי הצטרפות לערוצים אחרים כדי שהערוץ שלך יהיה נקי
+    new_text = re.sub(r'https?://t\.me/[^\s]+', '', new_text)
     return new_text
 
-def scrape_and_post():
-    """משיכת הודעות ותמונות דרך שרת מתווך כדי לעקוף את החסימה של רנדר"""
-    print("🔄 מתחיל סבב סריקה חכם דרך שרת מתווך...")
-    
-    for channel in SOURCE_CHANNELS:
-        # שימוש בשרת מתווך RSSHub שעוקף את חסימת הרשת של Render על טלגרם
-        rss_url = f"https://rsshub.app{channel}"
-        
-        try:
-            print(f"🔎 סורק את ערוץ: {channel} דרך שרת מתווך...")
-            response = requests.get(rss_url, timeout=15).text
-            
-            # חילוץ התיאור של הפוסט האחרון מהקובץ
-            descriptions = re.findall(r'<description><!\[CDATA\[(.*?)\]\]></description>', response)
-            
-            if not descriptions or len(descriptions) < 2:
-                print(f"⚠️ לא נמצאו פוסטים חדשים בערוץ {channel}")
-                continue
-                
-            # לוקח את הפוסט האחרון האמיתי (האינדקס הראשון הוא לרוב תיאור הערוץ הכללי)
-            latest_post = descriptions[1]
-            
-            # חילוץ קישור התמונה המקורית אם קיימת בתוך הפוסט
-            img_match = re.search(r'<img[^>]+src="([^">]+)"', latest_post)
-            image_url = img_match.group(1) if img_match else None
-            
-            # ניקוי תגיות ה-HTML כדי להישאר עם טקסט נקי לחלוטין לטלגרם
-            clean_text = re.sub(r'<[^>]+>', '', latest_post).strip()
-            
-            if not clean_text:
-                continue
-                
-            # סינון בגדי נשים מוחלט
-            if any(word in clean_text for word in FORBIDDEN_WORDS):
-                print(f"❌ הפוסט מערוץ {channel} מכיל בגדי נשים. מדלג.")
-                continue
-                
-            # המרת הקישורים לקישורי השותפים שלך
-            final_message = fix_and_convert_link(clean_text)
-            
-            # שליחה ישירה לערוץ שלך בהתאם לקיום תמונה
-            if image_url:
-                try:
-                    bot.send_photo(CHAT_ID, image_url, caption=final_message)
-                    print(f"✅ פוסט עם תמונה וקופונים הועתק בהצלחה מהערוץ {channel}!")
-                except Exception:
-                    bot.send_message(CHAT_ID, final_message)
-                    print(f"✅ פוסט הועתק כטקסט מהערוץ {channel} (התמונה הייתה חסומה)")
-            else:
-                bot.send_message(CHAT_ID, final_message)
-                print(f"✅ פוסט טקסט הועתק בהצלחה מהערוץ {channel}!")
-                
-            time.sleep(15)  # הפסקה קלה בין ערוץ לערוץ
-            
-        except Exception as e:
-            print(f"❌ שגיאה זמנית בגישה לשרת המתווך עבור {channel}: {e}")
-
-def main_loop():
-    print("🚀 הבוט העוקף מוכן ויוצא לדרך...")
+@bot.message_handler(content_types=['text', 'photo'])
+def handle_forwarded_deal(message):
+    """פונקציה שקולטת הודעה ששלחת או העברת לבוט, מעבדת אותה ומפרסמת בערוץ שלך"""
     try:
-        scrape_and_post()
-    except Exception as e:
-        print(f"Error in initial run: {e}")
+        print("📥 התקבלה הודעה חדשה בבוט! מתחיל עיבוד...")
         
-    while True:
-        # בדיקה קבועה בכל שעה של מבצעים וקופונים חדשים
-        time.sleep(3600)
+        # חילוץ הטקסט בין אם זה פוסט רגיל או פוסט עם תמונה
+        incoming_text = message.caption if message.content_type == 'photo' else message.text
+        
+        if not incoming_text:
+            return
+            
+        # המרת הקישורים לקישורי השותפים שלך וניקוי פרסומות
+        final_message = fix_and_convert_link(incoming_text)
+        
+        # הוספת חתימה קטנה ומקצועית של הערוץ שלך בסוף
+        final_message += "\n\n💎 פורסם בערוץ דילים שווים 2026 💎"
+
+        if message.content_type == 'photo':
+            # אם יש תמונה, ניקח את הגרסה הגדולה ביותר שלה ונשלח לערוץ
+            photo_id = message.photo[-1].file_id
+            bot.send_photo(CHAT_ID, photo_id, caption=final_message)
+            print("✅ הדיל נשלח בהצלחה לערוץ כולל התמונה המקורית!")
+        else:
+            # שליחת הודעת טקסט נקייה
+            bot.send_message(CHAT_ID, final_message)
+            print("✅ הדיל נשלח בהצלחה לערוץ כהודעת טקסט!")
+            
+    except Exception as e:
+        print(f"❌ שגיאה בעיבוד ההודעה: {e}")
 
 if __name__ == "__main__":
-    main_loop()
+    print("🚀 בוט המאזין החכם באוויר ומוכן לקבל ממך הודעות...")
+    # הפעלת האזנה קבועה ורציפה ללא הפסקה
+    bot.infinity_polling(timeout=10, long_polling_timeout=5)
