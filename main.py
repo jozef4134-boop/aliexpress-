@@ -20,140 +20,72 @@ threading.Thread(target=start_dummy_server, daemon=True).start()
 
 # 2. הגדרות ומשתני סביבה מהשרת (Render)
 TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
-CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID')
+MY_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID')
 TRACKING_ID = os.environ.get('TRACKING_ID', 'default')
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
-# מאגר הדילים המעודכן - האוזניות נמחקו לחלוטין! הדיל הראשון הוא כלי עבודה מבוקש
-HOT_DEALS_DATABASE = [
-    {
-        "id": "1005005822349102", 
-        "title": "🧰 סט מברגים חשמלי נטען Xiaomi Mijia 24 ב-1 לתיקון גאדג'טים, מחשבים וסלולר", 
-        "price": 98.5, 
-        "discount": 35, 
-        "emoji": "🛠️",
-        "custom_url": None
-    },
-    {
-        "id": "1005006321948501", 
-        "title": "🔊 רמקול בלוטות' אלחוטי חסין מים Anker Soundcore 2 - באס מטורף וסאונד נקי", 
-        "price": 145.0, 
-        "discount": 42, 
-        "emoji": "🎵",
-        "custom_url": None
-    },
-    {
-        "id": "1005005112349583", 
-        "title": "🔭 משקפת מקצועית עוצמתית HD לטיולים, שטח, טבע וצפייה בכוכבים", 
-        "price": 79.0, 
-        "discount": 55, 
-        "emoji": "🗺️",
-        "custom_url": None
-    },
-    {
-        "id": "1005006093849502", 
-        "title": "🧹 שואב אבק אלחוטי נטען לרכב ולבית בעוצמת שאיבה מטורפת 9000PA", 
-        "price": 54.0, 
-        "discount": 60, 
-        "emoji": "🚗",
-        "custom_url": None
-    },
-    {
-        "id": "page_coupons", 
-        "title": "🎁 מרכז הקופונים הרשמי של אלי אקספרס! כנסו לאסוף קופוני חנות והנחות שוות לפני כולם", 
-        "price": 0.0, 
-        "discount": 100, 
-        "emoji": "🏷️",
-        "custom_url": "https://aliexpress.com"
-    }
-]
+# רשימת שמות המשתמש (Username) של ערוצי הדילים האחרים שאתה רוצה לסרוק מהם
+# תוכל להחליף או להוסיף כאן כל ערוץ שתרצה (בלי ה-@)
+CHANNELS_TO_SPY = ["dilimshavima", "israel_deals"]
 
-last_posted_index = 0
+# מילים חסומות לסנון בגדי נשים ומוצרים לא רצויים
+BLOCKED_KEYWORDS = ["אישה", "נשים", "שמלה", "חצאית", "חזיה", "איפור", "עגילים"]
 
-def fetch_aliexpress_image(url):
-    """פונקציה חכמה שנכנסת לדף באליאקספרס ושולפת את תמונת המוצר הראשית לבד"""
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept-Language": "en-US,en;q=0.9"
-    }
+@bot.channel_post_handler(func=lambda message: True)
+def handle_incoming_deals(message):
+    """פונקציה שמקשיבה לערוצים האחרים, מעתיקה ומחליפה לקישור שלך"""
     try:
-        response = requests.get(url, headers=headers, timeout=10)
-        if response.status_code == 200:
-            images = re.findall(r'https://img\.alicdn\.com/[^\s"\']+\.jpg', response.text)
-            if images:
-                return images[0]
-    except Exception as e:
-        print(f"⚠️ לא הצלחתי לשלוף תמונה אוטומטית: {e}")
-    
-    return "https://unsplash.com"
+        # בדיקה אם הפוסט מגיע מאחד הערוצים שאנחנו עוקבים אחריהם
+        if message.chat.username not in CHANNELS_TO_SPY:
+            return
 
-def run_auto_post_cycle():
-    """הלולאה האוטומטית שמפרסמת פוסט מעוצב עם תמונה אוטומטית כל 5 דקות"""
-    global last_posted_index
-    print("🔄 מפעיל סבב פרסום אוטומטי ושולף תמונה לבד...")
-    
-    item = HOT_DEALS_DATABASE[last_posted_index]
-    price = item["price"]
-    discount = item["discount"]
-    pid = item["id"]
-    title = item["title"]
-    emoji = item["emoji"]
-    custom_url = item.get("custom_url")
-    
-    last_posted_index = (last_posted_index + 1) % len(HOT_DEALS_DATABASE)
-    
-    # 1. בניית הקישור הבסיסי הנקי בצורה הרשמית והיציבה ביותר
-    if custom_url:
-        raw_link = custom_url
-    else:
-        raw_link = f"https://aliexpress.com{pid}.html"
-    
-    # שליפת התמונה באופן אוטומטי מהאתר ברקע
-    image_url = fetch_aliexpress_image(raw_link)
-    
-    # 2. הוספת ה-Tracking ID בפורמט הסטנדרטי והמוכח שלא שובר את הדפדפנים
-    affiliate_link = f"{raw_link}?trackingId={TRACKING_ID}"
-    
-    if price > 0:
-        price_text = f"<b>מחיר בשקלים:</b> {price:.2f} ש''ח\n"
-    else:
-        price_text = "<b>מחיר:</b> קופוני הנחה משתנים! 🎁\n"
-
-    # עיצוב הטקסט מתחת לתמונה
-    message_text = (
-        f"{emoji} <b>דיל חם מעלי אקספרס!</b> {emoji}\n\n"
-        f"<b>מוצר:</b> {title}\n"
-        f"{price_text}"
-        f"<b>אחוז הנחה:</b> {discount}%\n\n"
-        f"🛒 לקנייה ישירה לחצו על הקישור הכחול:\n"
-        f"{affiliate_link}"
-    )
-    
-    try:
-        # שליחת התמונה האוטומטית והטקסט
-        bot.send_photo(CHAT_ID, image_url, caption=message_text, parse_mode='HTML')
-        print(f"🎯 הצלחה מוחלטת! מוצר {pid} שוגר בהצלחה עם קישור נקי!")
-    except Exception as e:
-        print(f"❌ שגיאה בשליחת הודעה: {e}")
-
-def posting_loop():
-    """לולאת זמן שרצה ברקע נפרד ומפרסמת כל 5 דקות (300 שניות)"""
-    time.sleep(5)
-    try:
-        run_auto_post_cycle()
-    except Exception as e:
-        print(f"Error in initial run: {e}")
+        text_content = message.text or message.caption or ""
         
-    while True:
-        time.sleep(300) # השהייה של 5 דקות בדיוק
-        try:
-            run_auto_post_cycle()
-        except Exception as e:
-            print(f"Error in cycle run: {e}")
+        # 1. סינון בגדי נשים - אם קיימת מילה חסומה, נתעלם מהפוסט לחלוטין
+        if any(keyword in text_content for keyword in BLOCKED_KEYWORDS):
+            print("🚫 הפוסט סונן מכיוון שהוא מכיל מילים חסומות (מוצרי נשים).")
+            return
+
+        # 2. איתור מספר המוצר של אליאקספרס מתוך הקישור של הערוץ האחר
+        # מחפש מספרים באורך 16 ספרות שמאפיינים מוצרים באליאקספרס
+        product_ids = re.findall(r'100500\d{10}', text_content)
+        
+        if not product_ids:
+            print("⚠️ לא נמצא מספר מוצר תקין של אליאקספרס בפוסט הנוכחי.")
+            return
+            
+        pid = product_ids[0] # לוקח את המוצר הראשון שנמצא
+
+        # 3. בניית הקישור החדש והנורמלי שלך עם ה-Tracking ID שלך!
+        my_affiliate_link = f"https://aliexpress.com{pid}.html?sourceType=affiliate&trackingId={TRACKING_ID}"
+
+        # 4. ניקוי הקישורים הישנים מהטקסט המקורי והחלפתם בקישור שלך
+        # נשמור על התיאור המקורי, המחיר והאימוג'ים שהם כבר עיצבו בעברית!
+        clean_text = re.sub(r'https?://\S+', '', text_content) # מוחק קישורים ישנים
+        
+        final_message = (
+            f"{clean_text}\n\n"
+            f"🛒 <b>לקנייה ישירה לחצו כאן:</b>\n"
+            f"{my_affiliate_link}"
+        )
+
+        # 5. שליחת הפוסט המועתק והמשודרג ישירות לערוץ שלך
+        if message.photo:
+            # אם יש לפוסט תמונה, נשלח אותה יחד עם הטקסט החדש שלך
+            photo_id = message.photo[-1].file_id
+            bot.send_photo(MY_CHAT_ID, photo_id, caption=final_message, parse_mode='HTML')
+            print(f"🎯 הצלחה מטורפת! הדיל הועתק, הקישור הוחלף לשלך והועלה עם תמונה!")
+        else:
+            # אם זה פוסט טקסט בלבד
+            bot.send_message(MY_CHAT_ID, final_message, parse_mode='HTML')
+            print(f"🎯 הצלחה! הדיל הועתק והועלה כטקסט בהצלחה!")
+
+    except Exception as e:
+        print(f"❌ שגיאה בעיבוד הפוסט מהערוץ המקביל: {e}")
 
 if __name__ == "__main__":
-    print("🚀 הבוט האוטומטי מתחיל לעבוד...")
+    print("🚀 בוט הריגול והעתקת הדילים האוטומטי התחיל לעבוד ברקע...")
     
     try:
         bot.remove_webhook()
@@ -162,5 +94,5 @@ if __name__ == "__main__":
     except:
         pass
         
-    threading.Thread(target=posting_loop, daemon=True).start()
+    # הפעלה קבועה של הצינתור וההקשבה לערוצים
     bot.infinity_polling(timeout=20, long_polling_timeout=10)
