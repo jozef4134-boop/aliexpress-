@@ -35,13 +35,6 @@ HOT_DEALS_DATABASE = [
         "discount": 42, 
         "emoji": "🎵",
         "link": "https://aliexpress.com"
-    },
-    {
-        "title": "🎁 מרכז הקופונים הרשמי של אלי אקספרס! כנסו לאסוף קופוני חנות והנחות שוות לפני כולם", 
-        "price": 0.0, 
-        "discount": 100, 
-        "emoji": "🏷️",
-        "link": "https://aliexpress.com"
     }
 ]
 
@@ -65,22 +58,16 @@ def run_auto_post_cycle():
     else:
         affiliate_link = f"{base_link}?trackingId={TRACKING_ID}"
     
-    if price > 0:
-        price_text = f"<b>מחיר בשקלים:</b> {price:.2f} ש''ח\n"
-    else:
-        price_text = "<b>מחיר:</b> קופוני הנחה משתנים! 🎁\n"
-
     message_text = (
         f"<a href='{affiliate_link}'>&#8205;</a>" 
         f"{emoji} <b>דיל חם מעלי אקספרס!</b> {emoji}\n\n"
         f"<b>מוצר:</b> {title}\n"
-        f"{price_text}"
+        f"<b>מחיר בשקלים:</b> {price:.2f} ש''ח\n"
         f"<b>אחוז הנחה:</b> {discount}%\n\n"
         f"🛒 לקנייה ישירה לחצו על הקישור הכחול:\n"
         f"{affiliate_link}"
     )
     
-    # הכתובת הרשמית והמדויקת של API טלגרם
     telegram_url = f"https://telegram.org{TELEGRAM_TOKEN}/sendMessage"
     payload = {
         "chat_id": CHAT_ID,
@@ -92,7 +79,7 @@ def run_auto_post_cycle():
     try:
         response = requests.post(telegram_url, json=payload, timeout=10)
         if response.status_code == 200:
-            print("🎯 הצלחה מוחלטת! הפוסט עלה בצורה מושלמת ונורמלית לערוץ!")
+            print("🎯 הצלחה מוחלטת! הפוסט עלה בהצלחה לערוץ!")
         else:
             print(f"⚠️ טלגרם החזירה שגיאה: {response.text}")
     except Exception as e:
@@ -106,7 +93,7 @@ def main_loop():
         print(f"Error in initial run: {e}")
         
     while True:
-        time.sleep(300) # כל 5 דקות פוסט
+        time.sleep(300) # פרסום קבוע בכל 5 דקות בדיוק
         try:
             run_auto_post_cycle()
         except Exception as e:
