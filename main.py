@@ -25,22 +25,38 @@ TRACKING_ID = os.environ.get('TRACKING_ID', 'default')
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
-# מאגר הדילים והקופונים האוטומטי - מעוצב וללא נשים
+# מאגר הדילים המעודכן - האוזניות נמחקו לחלוטין! הדיל הראשון הוא כלי עבודה מבוקש
 HOT_DEALS_DATABASE = [
     {
-        "id": "1005006135439564", 
-        "title": "אוזניות אלחוטיות Lenovo LP40 Pro המקוריות - שמע מהמם, סינון רעשים וסוללה חזקה", 
-        "price": 42.0, 
-        "discount": 45, 
-        "emoji": "🎧",
+        "id": "1005005822349102", 
+        "title": "🧰 סט מברגים חשמלי נטען Xiaomi Mijia 24 ב-1 לתיקון גאדג'טים, מחשבים וסלולר", 
+        "price": 98.5, 
+        "discount": 35, 
+        "emoji": "🛠️",
         "custom_url": None
     },
     {
-        "id": "1005005822349102", 
-        "title": "סט מברגים חשמלי נטען Xiaomi Mijia 24 ב-1 לתיקון גאדג'טים, מחשבים וסלולר", 
-        "price": 98.5, 
-        "discount": 35, 
-        "emoji": "🧰",
+        "id": "1005006321948501", 
+        "title": "🔊 רמקול בלוטות' אלחוטי חסין מים Anker Soundcore 2 - באס מטורף וסאונד נקי", 
+        "price": 145.0, 
+        "discount": 42, 
+        "emoji": "🎵",
+        "custom_url": None
+    },
+    {
+        "id": "1005005112349583", 
+        "title": "🔭 משקפת מקצועית עוצמתית HD לטיולים, שטח, טבע וצפייה בכוכבים", 
+        "price": 79.0, 
+        "discount": 55, 
+        "emoji": "🗺️",
+        "custom_url": None
+    },
+    {
+        "id": "1005006093849502", 
+        "title": "🧹 שואב אבק אלחוטי נטען לרכב ולבית בעוצמת שאיבה מטורפת 9000PA", 
+        "price": 54.0, 
+        "discount": 60, 
+        "emoji": "🚗",
         "custom_url": None
     },
     {
@@ -50,22 +66,6 @@ HOT_DEALS_DATABASE = [
         "discount": 100, 
         "emoji": "🏷️",
         "custom_url": "https://aliexpress.com"
-    },
-    {
-        "id": "1005006321948501", 
-        "title": "רמקול בלוטות' אלחוטי חסין מים Anker Soundcore 2 - באס מטורף וסאונד נקי", 
-        "price": 145.0, 
-        "discount": 42, 
-        "emoji": "🔊",
-        "custom_url": None
-    },
-    {
-        "id": "1005006093849502", 
-        "title": "שואב אבק אלחוטי נטען לרכב ולבית בעוצמת שאיבה מטורפת 9000PA", 
-        "price": 54.0, 
-        "discount": 60, 
-        "emoji": "🧹",
-        "custom_url": None
     }
 ]
 
@@ -103,20 +103,17 @@ def run_auto_post_cycle():
     
     last_posted_index = (last_posted_index + 1) % len(HOT_DEALS_DATABASE)
     
-    # 1. בניית הקישור הבסיסי הנקי בצורה רשמית
+    # 1. בניית הקישור הבסיסי הנקי בצורה הרשמית והיציבה ביותר
     if custom_url:
         raw_link = custom_url
     else:
         raw_link = f"https://aliexpress.com{pid}.html"
     
-    # שליפת התמונה באופן אוטומטי מהאתר
+    # שליפת התמונה באופן אוטומטי מהאתר ברקע
     image_url = fetch_aliexpress_image(raw_link)
     
-    # 2. תיקון קריטי: מבנה פרמטרים נקי ומדויק לקישורי שותפים באליאקספרס
-    if "?" in raw_link:
-        affiliate_link = f"{raw_link}&sourceType=affiliate&affiliateId={TRACKING_ID}"
-    else:
-        affiliate_link = f"{raw_link}?sourceType=affiliate&affiliateId={TRACKING_ID}"
+    # 2. הוספת ה-Tracking ID בפורמט הסטנדרטי והמוכח שלא שובר את הדפדפנים
+    affiliate_link = f"{raw_link}?trackingId={TRACKING_ID}"
     
     if price > 0:
         price_text = f"<b>מחיר בשקלים:</b> {price:.2f} ש''ח\n"
@@ -136,7 +133,7 @@ def run_auto_post_cycle():
     try:
         # שליחת התמונה האוטומטית והטקסט
         bot.send_photo(CHAT_ID, image_url, caption=message_text, parse_mode='HTML')
-        print(f"🎯 הצלחה מוחלטת! פוסט עם קישור מתוקן שוגר בהצלחה!")
+        print(f"🎯 הצלחה מוחלטת! מוצר {pid} שוגר בהצלחה עם קישור נקי!")
     except Exception as e:
         print(f"❌ שגיאה בשליחת הודעה: {e}")
 
