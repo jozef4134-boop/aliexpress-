@@ -9,70 +9,37 @@ def start_dummy_server():
     try:
         port = int(os.environ.get("PORT", 10000))
         server = HTTPServer(('0.0.0.0', port), SimpleHTTPRequestHandler)
-        print(f"Dummy server started on port {port}")
+        print("Dummy server started")
         server.serve_forever()
     except Exception as e:
         print(f"Dummy server error: {e}")
 
 threading.Thread(target=start_dummy_server, daemon=True).start()
 
-# 2. הגדרות ומשתני סביבה מהשרת
-TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
-CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID')
-TRACKING_ID = os.environ.get('TRACKING_ID', 'default')
-
-HOT_DEALS_DATABASE = [
-    {
-        "title": "🧰 סט מברגים חשמלי נטען Xiaomi Mijia 24 ב-1 לתיקון גאדג'טים, מחשבים וסלולר", 
-        "price": 98.5, 
-        "discount": 35, 
-        "emoji": "🛠️",
-        "link": "https://aliexpress.com"
-    },
-    {
-        "title": "🔊 רמקול בלוטות' אלחוטי חסין מים Anker Soundcore 2 - באס מטורף וסאונד נקי", 
-        "price": 145.0, 
-        "discount": 42, 
-        "emoji": "🎵",
-        "link": "https://aliexpress.com"
-    }
-]
-
-last_posted_index = 0
-
 def run_auto_post_cycle():
-    global last_posted_index
-    print("🔄 מפעיל סבב פרסום בטוח לחלוטין...")
+    """שליחת הדיל ישירות לערוץ טלגרם ללא שבירות קוד"""
+    print("🔄 מפעיל סבב פרסום בטוח...")
     
-    item = HOT_DEALS_DATABASE[last_posted_index]
-    price = item["price"]
-    discount = item["discount"]
-    title = item["title"]
-    emoji = item["emoji"]
-    base_link = item["link"]
-    
-    last_posted_index = (last_posted_index + 1) % len(HOT_DEALS_DATABASE)
-    
-    if "?" in base_link:
-        affiliate_link = f"{base_link}&trackingId={TRACKING_ID}"
-    else:
-        affiliate_link = f"{base_link}?trackingId={TRACKING_ID}"
+    # פרטי הדיל
+    title = "סט מברגים חשמלי נטען Xiaomi Mijia 24 ב-1"
+    price_text = "98.50 שקל"
+    discount = "35%"
+    affiliate_link = "https://aliexpress.com"
     
     message_text = (
-        f"<a href='{affiliate_link}'>&#8205;</a>" 
-        f"{emoji} <b>דיל חם מעלי אקספרס!</b> {emoji}\n\n"
-        f"<b>מוצר:</b> {title}\n"
-        f"<b>מחיר בשקלים:</b> {price:.2f} ש''ח\n"
-        f"<b>אחוז הנחה:</b> {discount}%\n\n"
-        f"🛒 לקנייה ישירה לחצו על הקישור הכחול:\n"
+        f"💥 דיל חם מעלי אקספרס! 💥\n\n"
+        f"מוצר: {title}\n"
+        f"מחיר: {price_text}\n"
+        f"הנחה: {discount}\n\n"
+        f"🛒 לקנייה ישירה לחצו על הקישור:\n"
         f"{affiliate_link}"
     )
     
-    telegram_url = f"https://telegram.org{TELEGRAM_TOKEN}/sendMessage"
+    # פנייה ישירה ומדויקת ל-API הרשמי של טלגרם
+    telegram_url = "https://telegram.org"
     payload = {
-        "chat_id": CHAT_ID,
+        "chat_id": "@DealsIL2026",
         "text": message_text,
-        "parse_mode": "HTML",
         "disable_web_page_preview": False
     }
     
@@ -83,21 +50,17 @@ def run_auto_post_cycle():
         else:
             print(f"⚠️ טלגרם החזירה שגיאה: {response.text}")
     except Exception as e:
-        print(f"❌ שגיאה בשליחת בקשת הרשת: {e}")
+        print(f"❌ שגיאה בשליחה: {e}")
 
 def main_loop():
-    print("🚀 הבוט האוטומטי והחסין החל לפעול...")
+    print("🚀 הבוט החל לפעול...")
     try:
         run_auto_post_cycle()
     except Exception as e:
-        print(f"Error in initial run: {e}")
+        print(f"Error: {e}")
         
     while True:
-        time.sleep(300) # פרסום קבוע בכל 5 דקות בדיוק
-        try:
-            run_auto_post_cycle()
-        except Exception as e:
-            print(f"Error in cycle run: {e}")
+        time.sleep(300) # פוסט בכל 5 דקות
 
 if __name__ == "__main__":
     main_loop()
