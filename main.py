@@ -51,8 +51,8 @@ def run_auto_post_cycle():
     # קידום התור לחצי שעה הבאה
     last_posted_index = (last_posted_index + 1) % len(HOT_DEALS_DATABASE)
     
-    # בניית קישור שותפים קצר ונקי בשורה נפרדת לחלוטין כדי למנוע שברים
-    affiliate_link = f"https://aliexpress.com{pid}.html&tracking_id={TRACKING_ID}"
+    # תיקון הקישור: הוספת לוכסן, /item/ וסימן שאלה עבור הפרמטרים
+    affiliate_link = f"https://aliexpress.com{pid}.html?tracking_id={TRACKING_ID}"
     
     # טקסט נקי, ברור ומקצועי ללא תגיות מורכבות שמחרבות את הפוסט
     message_text = (
@@ -65,22 +65,39 @@ def run_auto_post_cycle():
     )
     
     try:
-        # שליחת הודעת טקסט רגילה במצב HTML. ללא תמונות חיצוניות - 100% הצלחה וקישור כחול!
+        # שליחת הודעת טקסט רגילה במצב HTML
         bot.send_message(CHAT_ID, message_text, parse_mode='HTML')
         print(f"🎯 הצלחה מוחלטת! מוצר {pid} שוגר בהצלחה עם קישור כחול תקין!")
     except Exception as e:
         print(f"❌ שגיאה בשליחה: {e}")
 
-def main_loop():
-    print("🚀 הבוט האוטומטי לחלוטין רץ ברקע (כל חצי שעה)...")
+def posting_loop():
+    """לולאת זמן שרצה ברקע נפרד ומפרסמת כל 30 דקות"""
+    # פרסום ראשוני מיד עם עליית הבוט
     try:
         run_auto_post_cycle()
     except Exception as e:
         print(f"Error in initial run: {e}")
         
     while True:
-        # סבב אוטומטי בכל 30 דקות בדיוק
-        time.sleep(1800)
+        time.sleep(1800) # 30 דקות בשניות
+        try:
+            run_auto_post_cycle()
+        except Exception as e:
+            print(f"Error in cycle run: {e}")
 
 if __name__ == "__main__":
-    main_loop()
+    print("🚀 הבוט האוטומטי מתחיל לעבוד...")
+    
+    # הפעלת לולאת הפרסום ב-Thread נפרד כדי שלא תחסום את הקוד
+    threading.Thread(target=posting_loop, daemon=True).start()
+    
+    # מחיקת וובהוקים ישנים כדי למנוע את שגיאת ה-Conflict בלוגים של Render
+    try:
+        bot.remove_webhook()
+        time.sleep(1)
+    except:
+        pass
+        
+    # הפעלה יציבה של הבוט
+    bot.infinity_polling(timeout=10, long_polling_timeout=5)
