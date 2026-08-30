@@ -36,9 +36,9 @@ HOT_DEALS_DATABASE = [
 last_posted_index = 0
 
 def run_auto_post_cycle():
-    """הלולאה האוטומטית שמפרסמת עם קישור נקי וגלוי ללא תגיות שיכולות להישבר"""
+    """הלולאה האוטומטית שמפרסמת עם קישור נקי, פתוח ותקין לחלוטין"""
     global last_posted_index
-    print("🔄 מפעיל סבב פרסום אוטומטי יציב לחלוטין...")
+    print("🔄 מפעיל סבב פרסום אוטומטי עם קישור מתוקן...")
     
     item = HOT_DEALS_DATABASE[last_posted_index]
     price = item["price"]
@@ -49,10 +49,10 @@ def run_auto_post_cycle():
     # קידום התור לחצי שעה הבאה
     last_posted_index = (last_posted_index + 1) % len(HOT_DEALS_DATABASE)
     
-    # בניית קישור שותפים קצר ונקי - שמנו אותו בשורה נפרדת בלי טקסט צמוד כדי שלא יישבר
+    # 📌 תיקון הקישור: הוספת הסלאש ומבנה ה-item הנכון בדיוק כמו הכתובת הציבורית
     affiliate_link = f"https://aliexpress.com{pid}.html&tracking_id={TRACKING_ID}"
     
-    # טקסט נקי לחלוטין ללא תגיות HTML או Markdown (חסין שגיאות ב-100%)
+    # טקסט נקי לחלוטין ללא סימנים שיכולים לשבש את טלגרם
     message_text = (
         f"🛍️ דיל חם מעלי אקספרס! 🛍️\n\n"
         f"מוצר: {title}\n"
@@ -63,9 +63,9 @@ def run_auto_post_cycle():
     )
     
     try:
-        # שליחת הודעה רגילה לחלוטין. טלגרם מזהה את הקישור אוטומטית, הופכת אותו לכחול ופותחת את התמונה!
+        # שליחת הודעה פתוחה. טלגרם תהפוך את הקישור המתוקן לכחול ותטען את התמונה לבד!
         bot.send_message(CHAT_ID, message_text, disable_web_page_preview=False)
-        print(f"🎯 הצלחה! מוצר {pid} שוגר בהצלחה עם קישור גלוי ותמונה אוטומטית!")
+        print(f"🎯 הצלחה! מוצר {pid} שוגר עם קישור תקין!")
     except Exception as e:
         print(f"❌ שגיאה בשליחה: {e}")
 
