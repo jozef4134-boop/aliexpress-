@@ -36,7 +36,8 @@ def run_auto_post_cycle():
     )
     
     # פנייה ישירה ומדויקת ל-API הרשמי של טלגרם
-    telegram_url = "https://telegram.org"
+    telegram_url = "chat_id": "@DealsIL2026",
+
     payload = {
         "chat_id": "@DealsIL2026",
         "text": message_text,
