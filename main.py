@@ -38,27 +38,6 @@ HOT_DEALS_DATABASE = [
         "discount": 55, 
         "emoji": "🗺️",
         "link": "https://aliexpress.com"
-    },
-    {
-        "title": "👟 נעלי ריצה וספורט לגברים קלות ונושמות בעיצוב אופנתי ונוחות שיא", 
-        "price": 139.0, 
-        "discount": 48, 
-        "emoji": "🏃‍♂️",
-        "link": "https://aliexpress.com"
-    },
-    {
-        "title": "👕 חליפת טרנינג ספורט לגברים - סט אופנתי ואיכותי לחורף וליום-יום", 
-        "price": 115.0, 
-        "discount": 38, 
-        "emoji": "🤵",
-        "link": "https://aliexpress.com"
-    },
-    {
-        "title": "🎁 מרכז הקופונים הרשמי של אלי אקספרס! כנסו לאסוף קופוני חנות והנחות שוות לפני כולם", 
-        "price": 0.0, 
-        "discount": 100, 
-        "emoji": "🏷️",
-        "link": "https://aliexpress.com"
     }
 ]
 
@@ -76,7 +55,6 @@ def run_auto_post_cycle():
     emoji = item["emoji"]
     base_link = item["link"]
     
-    # מעבר למוצר הבא בתור לחצי שעה הבאה
     last_posted_index = (last_posted_index + 1) % len(HOT_DEALS_DATABASE)
     
     # בניית הקישור עם ה-Tracking ID שלך
@@ -91,7 +69,6 @@ def run_auto_post_cycle():
     else:
         price_text = "<b>מחיר:</b> קופוני הנחה משתנים! 🎁\n"
 
-    # קוד המכריח את טלגרם להציג את תמונת המוצר מאליאקספרס בראש הפוסט באופן אוטומטי
     message_text = (
         f"<a href='{affiliate_link}'>&#8205;</a>" 
         f"{emoji} <b>דיל חם מעלי אקספרס!</b> {emoji}\n\n"
@@ -102,10 +79,19 @@ def run_auto_post_cycle():
         f"{affiliate_link}"
     )
     
-    # פנייה ישירה ומדויקת ל-API הרשמי של טלגרם
-    telegram_url = f"https://telegram.org"
-    payload = {
-        # כאן תוקן ה-ID בדיוק לאותיות הנכונות של הערוץ שלך!
+    TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN', '8810138861:AAFdsvOOFYSF8hDrIffvAHA1PY144V61GcA')
+    telegram_url = f"https://telegram.org{TELEGRAM_TOKEN}/sendMessage"
+    
+    # ניסיון שליחה ראשון לפי מספר ה-ID הקשיח והבטוח של הערוץ שלך
+    payload_id = {
+        "chat_id": "-1002220456108",
+        "text": message_text,
+        "parse_mode": "HTML",
+        "disable_web_page_preview": False
+    }
+    
+    # ניסיון שליחה שני לגיבוי לפי השם הציבורי
+    payload_name = {
         "chat_id": "@DealsIl2026",
         "text": message_text,
         "parse_mode": "HTML",
@@ -113,11 +99,18 @@ def run_auto_post_cycle():
     }
     
     try:
-        response = requests.post(telegram_url, json=payload, timeout=10)
+        # שליחה באמצעות ה-ID הבטוח
+        response = requests.post(telegram_url, json=payload_id, timeout=10)
         if response.status_code == 200:
-            print("🎯 הצלחה מוחלטת! הפוסט עלה בהצלחה לערוץ!")
+            print("🎯 הצלחה מוחלטת! הפוסט עלה באמצעות Chat ID!")
+            return
+            
+        # אם נכשל, מנסה באמצעות השם הציבורי
+        response2 = requests.post(telegram_url, json=payload_name, timeout=10)
+        if response2.status_code == 200:
+            print("🎯 הצלחה מוחלטת! הפוסט עלה באמצעות Username!")
         else:
-            print(f"⚠️ טלגרם החזירה שגיאה: {response.text}")
+            print(f"⚠️ טלגרם החזירה שגיאה: {response2.text}")
     except Exception as e:
         print(f"❌ שגיאה בשליחה: {e}")
 
@@ -129,7 +122,7 @@ def main_loop():
         print(f"Error: {e}")
         
     while True:
-        time.sleep(300) # פוסט חדש מתחלף באופן אוטומטי בכל 5 דקות!
+        time.sleep(300) # פוסט חדש בכל 5 דקות!
 
 if __name__ == "__main__":
     main_loop()
