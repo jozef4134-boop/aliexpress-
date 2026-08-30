@@ -36,35 +36,36 @@ HOT_DEALS_DATABASE = [
 last_posted_index = 0
 
 def run_auto_post_cycle():
-    """הלולאה האוטומטית שמפרסמת עם קישור Markdown חסין לשגיאות"""
+    """הלולאה האוטומטית הכי פשוטה שיש - טקסט נקי וקישור גלוי ותקין"""
     global last_posted_index
-    print("🔄 מפעיל סבב פרסום אוטומטי בפורמט Markdown יציב...")
+    print("🔄 מפעיל סבב פרסום בסיסי ויציב ללא עיצובים מורכבים...")
     
     item = HOT_DEALS_DATABASE[last_posted_index]
-    price = item["price"] if "price" in item else 42.0
-    discount = item["discount"] if "discount" in item else 45
+    price = 42.0
+    discount = 45
     pid = item["id"]
     title = item["title"]
     
     # קידום התור לחצי שעה הבאה
     last_posted_index = (last_posted_index + 1) % len(HOT_DEALS_DATABASE)
     
-    # בניית הקישור הרשמי והמדויק של עלי אקספרס - עם הסלאש במקום הנכון!
+    # בניית הקישור הרשמי והתקין של עלי אקספרס - עם הסלאש הנכון אחרי ה-item
     affiliate_link = f"https://aliexpress.com{pid}.html&tracking_id={TRACKING_ID}"
     
-    # עיצוב בפורמט Markdown קלאסי ונקי. [טקסט](קישור) יוצר מילה לחיצה וכחולה בטוחה!
+    # טקסט נקי לחלוטין ללא שום כוכביות, תגיות או סוגריים שמבלבלים את טלגרם
     message_text = (
-        f"🛍️ *דיל חם מעלי אקספרס!* 🛍️\n\n"
-        f"*מוצר:* {title}\n"
-        f"*מחיר בשקלים:* {price:.2f} ש''ח\n"
-        f"*אחוז הנחה:* {discount}%\n\n"
-        f"🛒 [לחצו כאן לקנייה ישירה]({affiliate_link})"
+        f"🛍️ דיל חם מעלי אקספרס! 🛍️\n\n"
+        f"מוצר: {title}\n"
+        f"מחיר בשקלים: {price:.2f} ש''ח\n"
+        f"אחוז הנחה: {discount}%\n\n"
+        f"🛒 לקנייה ישירה לחצו על הקישור הכחול:\n"
+        f"{affiliate_link}"
     )
     
     try:
-        # שליחה מפורשת במצב Markdown
-        bot.send_message(CHAT_ID, message_text, parse_mode='Markdown', disable_web_page_preview=False)
-        print(f"🎯 הצלחה מוחלטת! מוצר {pid} שוגר בפורמט Markdown!")
+        # שליחת הודעה רגילה ובסיסית (בלי parse_mode). טלגרם תזהה את הקישור בעצמה ותפתח את התמונה!
+        bot.send_message(CHAT_ID, message_text, disable_web_page_preview=False)
+        print(f"🎯 הצלחה מוחלטת! מוצר {pid} שוגר בהצלחה עם קישור גלוי ותקין!")
     except Exception as e:
         print(f"❌ שגיאה בשליחה: {e}")
 
