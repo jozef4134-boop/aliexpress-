@@ -4,7 +4,7 @@ import time
 import threading
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 
-# 1. שרת דמי עבור Render למניעת קריסות של השרות
+# 1. שרת דמי עבור Render למניעת קריסות
 def start_dummy_server():
     try:
         port = int(os.environ.get("PORT", 10000))
@@ -21,7 +21,6 @@ TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
 CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID')
 TRACKING_ID = os.environ.get('TRACKING_ID', 'default')
 
-# מאגר הדילים והקופונים היציב והנקי ביותר (ללא נשים)
 HOT_DEALS_DATABASE = [
     {
         "title": "🧰 סט מברגים חשמלי נטען Xiaomi Mijia 24 ב-1 לתיקון גאדג'טים, מחשבים וסלולר", 
@@ -49,7 +48,6 @@ HOT_DEALS_DATABASE = [
 last_posted_index = 0
 
 def run_auto_post_cycle():
-    """פונקציה חסינה השולחת הודעה ישירות באמצעות Telegram API ללא ספריות בוטים"""
     global last_posted_index
     print("🔄 מפעיל סבב פרסום בטוח לחלוטין...")
     
@@ -62,7 +60,6 @@ def run_auto_post_cycle():
     
     last_posted_index = (last_posted_index + 1) % len(HOT_DEALS_DATABASE)
     
-    # הצמדת ה-Tracking ID בצורה הנקייה והמדויקת ביותר
     if "?" in base_link:
         affiliate_link = f"{base_link}&trackingId={TRACKING_ID}"
     else:
@@ -73,7 +70,6 @@ def run_auto_post_cycle():
     else:
         price_text = "<b>מחיר:</b> קופוני הנחה משתנים! 🎁\n"
 
-    # קוד המכריח את טלגרם להציג את תמונת המוצר מאליאקספרס בראש הפוסט באופן אוטומטי
     message_text = (
         f"<a href='{affiliate_link}'>&#8205;</a>" 
         f"{emoji} <b>דיל חם מעלי אקספרס!</b> {emoji}\n\n"
@@ -84,7 +80,7 @@ def run_auto_post_cycle():
         f"{affiliate_link}"
     )
     
-    # תיקון הכתובת לכתובת ה-API הרשמית והנכונה
+    # הכתובת הרשמית והמדויקת של API טלגרם
     telegram_url = f"https://telegram.org{TELEGRAM_TOKEN}/sendMessage"
     payload = {
         "chat_id": CHAT_ID,
@@ -104,14 +100,13 @@ def run_auto_post_cycle():
 
 def main_loop():
     print("🚀 הבוט האוטומטי והחסין החל לפעול...")
-    # שליחה ראשונית מיידית
     try:
         run_auto_post_cycle()
     except Exception as e:
         print(f"Error in initial run: {e}")
         
     while True:
-        time.sleep(300) # פרסום קבוע בכל 5 דקות בדיוק
+        time.sleep(300) # כל 5 דקות פוסט
         try:
             run_auto_post_cycle()
         except Exception as e:
