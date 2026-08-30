@@ -17,14 +17,15 @@ def start_dummy_server():
 
 threading.Thread(target=start_dummy_server, daemon=True).start()
 
-# 2. הגדרות ומשתני סביבה מהשרת
+# 2. הגדרות ומשתני סביבה מהשרת (Render)
 TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
 CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID')
+# כאן הבוט ישתמש ב-Tracking ID שהגדרת ב-Render כדי שהעמלות ילכו אליך!
 TRACKING_ID = os.environ.get('TRACKING_ID', 'default')
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
-# מאגר הדילים האוטומטי לחלוטין - מעוצב עם אימוג'ים מותאמים במקום תמונות חסומות (ללא נשים)
+# מאגר הדילים האוטומטי - מעוצב עם אימוג'ים מותאמים (ללא נשים)
 HOT_DEALS_DATABASE = [
     {"id": "1005006135439564", "title": "אוזניות אלחוטיות Lenovo LP40 Pro המקוריות - שמע מהמם, סינון רעשים וסוללה חזקה", "price": 42.0, "discount": 45, "emoji": "🎧"},
     {"id": "1005005822349102", "title": "סט מברגים חשמלי נטען Xiaomi Mijia 24 ב-1 לתיקון גאדג'טים, מחשבים וסלולר", "price": 98.5, "discount": 35, "emoji": "🧰"},
@@ -37,9 +38,9 @@ HOT_DEALS_DATABASE = [
 last_posted_index = 0
 
 def run_auto_post_cycle():
-    """הלולאה האוטומטית שמפרסמת טקסט נקי, יציב וחסין לחלוטין"""
+    """הלולאה האוטומטית שמייצרת ומדביקה את הקישורים לבד"""
     global last_posted_index
-    print("🔄 מפעיל סבב פרסום אוטומטי בטוח ללא תמונות...")
+    print("🔄 מפעיל סבב פרסום אוטומטי ומדביק קישור מעקב...")
     
     item = HOT_DEALS_DATABASE[last_posted_index]
     price = item["price"]
@@ -48,13 +49,12 @@ def run_auto_post_cycle():
     title = item["title"]
     emoji = item["emoji"]
     
-    # קידום התור לחצי שעה הבאה
     last_posted_index = (last_posted_index + 1) % len(HOT_DEALS_DATABASE)
     
-    # תיקון קריטי: בניית הקישור בפורמט הרשמי, הלחיץ והעובד של אליאקספרס
-    affiliate_link = f"https://aliexpress.com{pid}.html"
+    # הבוט מדביק ובונה בעצמו את הקישור הרשמי והתקין של אליאקספרס יחד עם ה-Tracking ID שלך!
+    affiliate_link = f"https://aliexpress.com{pid}.html?sourceType=affiliate&trackingId={TRACKING_ID}"
     
-    # טקסט נקי, ברור ומקצועי ללא תגיות מורכבות שמחרבות את הפוסט
+    # טקסט נקי, ברור ומקצועי ללא תגיות שבורות
     message_text = (
         f"{emoji} <b>דיל חם מעלי אקספרס!</b> {emoji}\n\n"
         f"<b>מוצר:</b> {title}\n"
@@ -67,13 +67,12 @@ def run_auto_post_cycle():
     try:
         # שליחת הודעת טקסט רגילה במצב HTML
         bot.send_message(CHAT_ID, message_text, parse_mode='HTML')
-        print(f"🎯 הצלחה מוחלטת! מוצר {pid} שוגר בהצלחה עם קישור כחול תקין!")
+        print(f"🎯 הצלחה מוחלטת! מוצר {pid} פורסם והודבק בהצלחה!")
     except Exception as e:
         print(f"❌ שגיאה בשליחה: {e}")
 
 def posting_loop():
     """לולאת זמן שרצה ברקע נפרד ומפרסמת כל 30 דקות"""
-    # חלון זמן קצר כדי לתת לשרת לעלות בצורה חלקה לפני הפרסום הראשון
     time.sleep(5)
     try:
         run_auto_post_cycle()
@@ -90,17 +89,16 @@ def posting_loop():
 if __name__ == "__main__":
     print("🚀 הבוט האוטומטי מתחיל לעבוד...")
     
-    # מחיקת וובהוקים וניקוי בקשות ישנות (מונע Conflict)
+    # מחיקת וובהוקים וניקוי בקשות ישנות למניעת שגיאת Conflict
     try:
         bot.remove_webhook()
-        # מחיקת הודעות קודמות שמחכות בתור של טלגרם ויוצרות עומס
         bot.get_updates(offset=-1)
         time.sleep(1)
-    except Exception as e:
-        print(f"Webhook cleanup notice: {e}")
+    except:
+        pass
         
-    # הפעלת לולאת הפרסום ב-Thread נפרד
+    # הפעלת לולאת הפרסום ב-Thread נפרד כדי שלא תחסום את הקוד
     threading.Thread(target=posting_loop, daemon=True).start()
-        
+    
     # הפעלה יציבה של הבוט
     bot.infinity_polling(timeout=20, long_polling_timeout=10)
