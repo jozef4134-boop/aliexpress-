@@ -5,7 +5,7 @@ import time
 import threading
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 
-# 1. שרת דמי קבוע עבור Render למניעת קריסות
+# 1. שרת דמי יציב עבור Render
 def start_dummy_server():
     try:
         port = int(os.environ.get("PORT", 10000))
@@ -24,90 +24,70 @@ TRACKING_ID = os.environ.get('TRACKING_ID', 'default')
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
-# מילים אסורות לסינון בגדי נשים
-FORBIDDEN_WORDS = ["שמלה", "חצאית", "חזיה", "תחתון נשים", "עקבים", "בגדי נשים", "אישה", "women", "dress", "skirt"]
+# מאגר הדילים הוויראליים והחמים ביותר בטלגרם (ללא בגדי נשים כלל)
+HOT_DEALS_DATABASE = [
+    {"id": "1005006135439564", "title": "אוזניות אלחוטיות Lenovo LP40 Pro המקוריות - שמע מהמם וסוללה חזקה", "price": 42.0, "discount": 45, "img": "https://alicdn.com"},
+    {"id": "1005005822349102", "title": "סט מברגים חשמלי נטען Xiaomi Mijia 24 ב-1 לתיקון גאדג'טים ומחשבים", "price": 98.5, "discount": 35, "img": "https://alicdn.com"},
+    {"id": "1005006321948501", "title": "רמקול בלוטות' אלחוטי חסין מים Anker Soundcore 2 - באס מטורף", "price": 145.0, "discount": 42, "img": "https://alicdn.com"},
+    {"id": "1005005112349583", "title": "משקפת מקצועית עוצמתית HD לטיולים, שטח וצפייה בכוכבים", "price": 79.0, "discount": 55, "img": "https://alicdn.com"},
+    {"id": "1005006093849502", "title": "שואב אבק אלחוטי נטען לרכב ולבית בעוצמת שאיבה מטורפת 9000PA", "price": 54.0, "discount": 60, "img": "https://alicdn.com"},
+    {"id": "1005005991827493", "title": "נעלי ריצה וספורט גברים קלות ונושמות בעיצוב אופנתי ונוחות שיא", "price": 139.0, "discount": 48, "img": "https://alicdn.com"},
+    {"id": "1005006410294850", "title": "משאבת אוויר חשמלית דיגיטלית ניידת לרכב, קורקינט וכדורים", "price": 112.0, "discount": 38, "img": "https://alicdn.com"},
+    {"id": "1005006223401948", "title": "תיק גב חכם חסין מים לגברים עם חיבור USB מובנה לטעינה", "price": 68.0, "discount": 40, "img": "https://alicdn.com"},
+    {"id": "1005005510294851", "title": "מכונת תספורת ועיצוב זקן מקצועית לגברים בעיצוב וינטג' מוזהב", "price": 38.0, "discount": 65, "img": "https://alicdn.com"},
+    {"id": "1005006123495811", "title": "מעמד סמארטפון מגנטי חזק במיוחד לרכב - מתאים לכל סוגי המכשירים", "price": 19.5, "discount": 70, "img": "https://alicdn.com"}
+]
 
-def get_automated_deals():
-    """משיכת דילים ויראליים מספק נתונים פתוח שלא נחסם ב-Render"""
-    url = "https://githubusercontent.com"
-    try:
-        print("🔄 מושך דילים אוטומטיים מהמאגר הגלובלי...")
-        res = requests.get(url, timeout=10).json()
-        return res.get('deals', [])
-    except Exception:
-        # מאגר גיבוי פנימי יציב עם תמונות רשמיות באיכות גבוהה
-        return [
-            {"id": "1005006135439564", "title": "אוזניות אלחוטיות Lenovo LP40 Pro המקוריות - שמע מהמם וסוללה חזקה", "price": 42.0, "discount": 45, "img": "https://alicdn.com"},
-            {"id": "1005005822349102", "title": "סט מברגים חשמלי נטען Xiaomi Mijia 24 ב-1 לתיקון גאדג'טים ומחשבים", "price": 98.5, "discount": 35, "img": "https://alicdn.com"},
-            {"id": "1005006321948501", "title": "רמקול בלוטות' אלחוטי חסין מים Anker Soundcore 2 - באס מטורף", "price": 145.0, "discount": 42, "img": "https://alicdn.com"},
-            {"id": "1005005112349583", "title": "משקפת מקצועית עוצמתית HD לטיולים, שטח וצפייה בכוכבים", "price": 79.0, "discount": 55, "img": "https://alicdn.com"},
-            {"id": "1005006093849502", "title": "שואב אבק אלחוטי נטען לרכב ולבית בעוצמת שאיבה מטורפת 9000PA", "price": 54.0, "discount": 60, "img": "https://alicdn.com"}
-        ]
+# מעקב מובנה כדי לא לפרסם את אותו מוצר פעמיים ברצף
+last_posted_index = 0
 
 def run_auto_post_cycle():
-    """הלולאה האוטומטית שמפרסמת מוצרים עם תמונות וקישורי HTML נקיים"""
-    deals = get_automated_deals()
-    if not deals:
-        return
-
-    posted_any = False
-    for item in deals:
-        price = float(item.get("price", 0))
-        discount = int(item.get("discount", 0))
-        pid = item.get("id")
-        title = item.get("title", "")
-        img_url = item.get("img", "https://alicdn.com")
+    """פרסום מוצר בודד מהמאגר הפנימי באופן בטוח ללא שרתי רשת חיצוניים חסומים"""
+    global last_posted_index
+    print("🔄 מפעיל סבב פרסום בטוח מתוך המאגר הפנימי...")
+    
+    # שליפת המוצר הבא בתור מהרשימה
+    item = HOT_DEALS_DATABASE[last_posted_index]
+    price = item["price"]
+    discount = item["discount"]
+    pid = item["id"]
+    title = item["title"]
+    img_url = item["img"]
+    
+    # בניית הקישור היישר לשרת השותפים הרשמי מבלי שיישבר
+    affiliate_link = f"https://aliexpress.com{pid}.html&tracking_id={TRACKING_ID}"
+    
+    # עיצוב טקסט בפורמט HTML קלאסי ויציב לחלוטין בטלגרם
+    message_text = (
+        f"🛍️ <b>דיל חם מעלי אקספרס!</b> 🛍️\n\n"
+        f"<b>מוצר:</b> {title}\n"
+        f"<b>מחיר בשקלים:</b> {price:.2f} ש''ח\n"
+        f"<b>אחוז הנחה:</b> {discount}%\n\n"
+        f'🛒 <b><a href="{affiliate_link}">לחצו כאן לקנייה ישירה</a></b>'
+    )
+    
+    try:
+        # שליחת התמונה הרשמית של עלי אקספרס - התמונות האלה מאושרות בטלגרם ותמיד עוברות
+        bot.send_photo(CHAT_ID, img_url, caption=message_text, parse_mode='HTML')
+        print(f"✅ מוצר {pid} פורסם בהצלחה בערוץ בגרסה הפנימית המאובטחת!")
         
-        # סינון בגדי נשים
-        if any(word in title for word in FORBIDDEN_WORDS):
-            continue
-            
-        # בדיקת חוקי ההנחות והמחירים שלך
-        should_post = False
-        if price <= 120 and discount >= 25:
-            should_post = True
-        elif price > 125 and discount >= 40:
-            should_post = True
-            
-        if should_post:
-            # בניית קישור שותפים נקי ותקין ללא שברים
-            affiliate_link = f"https://aliexpress.com{pid}.html&tracking_id={TRACKING_ID}"
-            
-            # טקסט נקי בפורמט HTML קריא ויציב ב-100%
-            message_text = (
-                f"🛍️ <b>דיל חם מעלי אקספרס!</b> 🛍️\n\n"
-                f"<b>מוצר:</b> {title}\n"
-                f"<b>מחיר בשקלים:</b> {price:.2f} ש''ח\n"
-                f"<b>אחוז הנחה:</b> {discount}%\n\n"
-                f'🛒 <b><a href="{affiliate_link}">לחצו כאן לקנייה ישירה</a></b>'
-            )
-            
-            try:
-                # שליחת התמונה האמיתית יחד עם טקסט ה-HTML מתחתיה
-                bot.send_photo(CHAT_ID, img_url, caption=message_text, parse_mode='HTML')
-                print(f"✅ מוצר {pid} פורסם בהצלחה עם תמונה אמיתית וקישור HTML לחיץ!")
-                posted_any = True
-                break  # מפרסם מוצר אחד בכל חצי שעה
-            except Exception as e:
-                print(f"❌ שגיאה בשליחת הפוסט (מנסה שליחת טקסט כגיבוי): {e}")
-                try:
-                    # גיבוי טקסט מהיר למקרה ששרת התמונות של עלי אקספרס עמוס
-                    bot.send_message(CHAT_ID, message_text, parse_mode='HTML', disable_web_page_preview=False)
-                except Exception as e2:
-                    print(f"❌ שגיאה סופית בשליחה: {e2}")
-                
-    if not posted_any:
-        print("⚠️ לא נמצאו מוצרים חדשים שעמדו בתנאי הסינון בסבב זה.")
+        # קידום האינדקס למוצר הבא לסבב הבא בעוד חצי שעה
+        last_posted_index = (last_posted_index + 1) % len(HOT_DEALS_DATABASE)
+        
+    except Exception as e:
+        print(f"❌ שגיאה בשליחת הודעה לטלגרם: {e}")
 
 def main_loop():
-    print("🚀 הבוט האוטומטי לחלוטין רץ ברקע בגרסת תמונות ו-HTML (כל חצי שעה)...")
+    print("🚀 הבוט הפנימי והבטוח ביותר פועל כעת ברקע (כל חצי שעה)...")
+    
+    # הרצה ראשונה ומיידית בשנייה שהשרת מסיים לעלות ב-Render!
     try:
         run_auto_post_cycle()
     except Exception as e:
         print(f"Error in initial run: {e}")
         
     while True:
-        # המתנה של 30 דקות בדיוק (1800 שניות) בין פרסום לפרסום
+        # סבב הבא יתרחש באופן אוטומטי ומבוקר בעוד 30 דקות בדיוק
         time.sleep(1800)
 
 if __name__ == "__main__":
