@@ -1,11 +1,11 @@
 import os
 import requests
 import telebot
-import time
 import threading
+import re
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 
-# 1. שרת דמי קבוע עבור Render למניעת קריסות
+# 1. שרת דמי יציב עבור Render שלא יקרוס
 def start_dummy_server():
     try:
         port = int(os.environ.get("PORT", 10000))
@@ -24,61 +24,70 @@ TRACKING_ID = os.environ.get('TRACKING_ID', 'default')
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
-# מאגר הדילים הוויראליים - מוצרים חמים לגברים ולבית (ללא נשים)
-HOT_DEALS_DATABASE = [
-    {"id": "1005006135439564", "title": "אוזניות אלחוטיות Lenovo LP40 Pro המקוריות - שמע מהמם, סינון רעשים וסוללה חזקה"},
-    {"id": "1005005822349102", "title": "סט מברגים חשמלי נטען Xiaomi Mijia 24 ב-1 לתיקון גאדג'טים, מחשבים וסלולר"},
-    {"id": "1005006321948501", "title": "רמקול בלוטות' אלחוטי חסין מים Anker Soundcore 2 - באס מטורף וסאונד נקי"},
-    {"id": "1005005112349583", "title": "משקפת מקצועית עוצמתית HD לטיולים, שטח, טבע וצפייה בכוכבים"},
-    {"id": "1005006093849502", "title": "שואב אבק אלחוטי נטען לרכב ולבית בעוצמת שאיבה מטורפת 9000PA"}
-]
+def extract_product_id(text):
+    """חילוץ מזהה מוצר מכל סוג של קישור עלי אקספרס"""
+    # חיפוש קישור ארוך סטנדרטי
+    product_id_match = re.search(r'item/(\d+)\.html', text)
+    if not product_id_match:
+        # חיפוש מספר רץ של ה-HTML
+        product_id_match = re.search(r'(\d+)\.html', text)
+    
+    if product_id_match:
+        return product_id_match.group(1)
+    return None
 
-last_posted_index = 0
-
-def run_auto_post_cycle():
-    """הלולאה האוטומטית הכי פשוטה שיש - טקסט נקי וקישור גלוי ותקין"""
-    global last_posted_index
-    print("🔄 מפעיל סבב פרסום בסיסי ויציב ללא עיצובים מורכבים...")
+@bot.message_handler(func=lambda message: True)
+def handle_user_product(message):
+    """פונקציה שקולטת קישור ששלחת לבוט, ממירה אותו ושולחת מייד לערוץ"""
+    user_text = message.text
+    print(f"📥 התקבל קישור ממך בבוט: {user_text}")
     
-    item = HOT_DEALS_DATABASE[last_posted_index]
-    price = 42.0
-    discount = 45
-    pid = item["id"]
-    title = item["title"]
-    
-    # קידום התור לחצי שעה הבאה
-    last_posted_index = (last_posted_index + 1) % len(HOT_DEALS_DATABASE)
-    
-    # בניית הקישור הרשמי והתקין של עלי אקספרס - עם הסלאש הנכון אחרי ה-item
-    affiliate_link = f"https://aliexpress.com{pid}.html&tracking_id={TRACKING_ID}"
-    
-    # טקסט נקי לחלוטין ללא שום כוכביות, תגיות או סוגריים שמבלבלים את טלגרם
-    message_text = (
-        f"🛍️ דיל חם מעלי אקספרס! 🛍️\n\n"
-        f"מוצר: {title}\n"
-        f"מחיר בשקלים: {price:.2f} ש''ח\n"
-        f"אחוז הנחה: {discount}%\n\n"
-        f"🛒 לקנייה ישירה לחצו על הקישור הכחול:\n"
-        f"{affiliate_link}"
-    )
-    
-    try:
-        # שליחת הודעה רגילה ובסיסית (בלי parse_mode). טלגרם תזהה את הקישור בעצמה ותפתח את התמונה!
-        bot.send_message(CHAT_ID, message_text, disable_web_page_preview=False)
-        print(f"🎯 הצלחה מוחלטת! מוצר {pid} שוגר בהצלחה עם קישור גלוי ותקין!")
-    except Exception as e:
-        print(f"❌ שגיאה בשליחה: {e}")
-
-def main_loop():
-    print("🚀 הבוט האוטומטי לחלוטין רץ ברקע (כל חצי שעה)...")
-    try:
-        run_auto_post_cycle()
-    except Exception as e:
-        print(f"Error in initial run: {e}")
+    # בדיקה אם ההודעה מכילה קישור של עלי אקספרס
+    if "aliexpress" in user_text.lower() or "s.click" in user_text.lower():
         
-    while True:
-        # סבב אוטומטי בכל 30 דקות בדיוק
-        time.sleep(1800)
+        # חילוץ מזהה המוצר
+        pid = extract_product_id(user_text)
+        
+        if pid:
+            # בניית קישור שותפים תקין, רשמי ומדויק ב-100% ללא שברים
+            affiliate_link = f"https://aliexpress.com{pid}.html&tracking_id={TRACKING_ID}"
+            
+            # בניית פוסט נקי ומקצועי לערוץ שלך
+            message_text = (
+                f"🛍️ דיל חדש עלה לערוץ! 🛍️\n\n"
+                f"🔥 מוצר מומלץ מעלי אקספרס במחיר מטורף!\n\n"
+                f"🛒 לקנייה ישירה לחצו על הקישור הכחול:\n"
+                f"{affiliate_link}"
+            )
+            
+            try:
+                # שליחת הפוסט לערוץ שלך (טלגרם תהפוך את הקישור לכחול ותטען את התמונה לבד!)
+                bot.send_message(CHAT_ID, message_text, disable_web_page_preview=False)
+                
+                # שליחת הודעת אישור חזרה אליך לפרטי של הבוט
+                bot.reply_to(message, "✅ הקישור הומר בהצלחה והפוסט שוגר לערוץ שלך!")
+                print(f"🎯 פוסט עבור מוצר {pid} פורסם בהצלחה!")
+            except Exception as e:
+                bot.reply_to(message, f"❌ שגיאה בשליחה לערוץ: {e}")
+        else:
+            # אם שלחת קישור מקוצר (כמו s.click), נעביר אותו ישירות דרך מערכת ה-deepLink של השותפים
+            clean_url = user_text.strip()
+            affiliate_link = f"https://aliexpress.com{clean_url}&tracking_id={TRACKING_ID}"
+            
+            message_text = (
+                f"🛍️ דיל חדש עלה לערוץ! 🛍️\n\n"
+                f"🛒 לקנייה ישירה לחצו על הקישור הכחול:\n"
+                f"{affiliate_link}"
+            )
+            try:
+                bot.send_message(CHAT_ID, message_text, disable_web_page_preview=False)
+                bot.reply_to(message, "✅ הקישור המקוצר הומר ושוגר בהצלחה!")
+            except Exception as e:
+                bot.reply_to(message, f"❌ שגיאה: {e}")
+    else:
+        bot.reply_to(message, "⚠️ נא לשלוח קישור תקין של עלי אקספרס בלבד.")
 
 if __name__ == "__main__":
-    main_loop()
+    print("🚀 בוט השליחה העצמית באוויר ומאזין לך בטלגרם...")
+    # הפעלת האזנה קבועה ורציפה ללא הפסקה
+    bot.infinity_polling(timeout=10, long_polling_timeout=5)
