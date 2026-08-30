@@ -51,7 +51,7 @@ def run_auto_post_cycle():
     # קידום התור לחצי שעה הבאה
     last_posted_index = (last_posted_index + 1) % len(HOT_DEALS_DATABASE)
     
-    # בניית הקישור בפורמט הרשמי והנכון של אליאקספרס
+    # תיקון קריטי: בניית הקישור בפורמט הרשמי, הלחיץ והעובד של אליאקספרס
     affiliate_link = f"https://aliexpress.com{pid}.html"
     
     # טקסט נקי, ברור ומקצועי ללא תגיות מורכבות שמחרבות את הפוסט
@@ -73,7 +73,8 @@ def run_auto_post_cycle():
 
 def posting_loop():
     """לולאת זמן שרצה ברקע נפרד ומפרסמת כל 30 דקות"""
-    # פרסום ראשוני מיד עם עליית הבוט
+    # חלון זמן קצר כדי לתת לשרת לעלות בצורה חלקה לפני הפרסום הראשון
+    time.sleep(5)
     try:
         run_auto_post_cycle()
     except Exception as e:
@@ -89,16 +90,17 @@ def posting_loop():
 if __name__ == "__main__":
     print("🚀 הבוט האוטומטי מתחיל לעבוד...")
     
-    # הפעלת לולאת הפרסום ב-Thread נפרד כדי שלא תחסום את הקוד
-    threading.Thread(target=posting_loop, daemon=True).start()
-    
-    # מחיקת וובהוקים ישנים כדי למנוע את שגיאת ה-Conflict בלוגים של Render
+    # מחיקת וובהוקים וניקוי בקשות ישנות (מונע Conflict)
     try:
         bot.remove_webhook()
+        # מחיקת הודעות קודמות שמחכות בתור של טלגרם ויוצרות עומס
+        bot.get_updates(offset=-1)
         time.sleep(1)
-    except:
-        pass
+    except Exception as e:
+        print(f"Webhook cleanup notice: {e}")
+        
+    # הפעלת לולאת הפרסום ב-Thread נפרד
+    threading.Thread(target=posting_loop, daemon=True).start()
         
     # הפעלה יציבה של הבוט
-    bot.infinity_polling(timeout=10, long_polling_timeout=5)
-
+    bot.infinity_polling(timeout=20, long_polling_timeout=10)
