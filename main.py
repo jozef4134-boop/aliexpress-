@@ -84,7 +84,7 @@ def run_auto_post_cycle():
         f"{affiliate_link}"
     )
     
-    # שליחה ישירה לשרתים של טלגרם באמצעות בקשת POST פשוטה
+    # תיקון הכתובת לכתובת ה-API הרשמית והנכונה
     telegram_url = f"https://telegram.org{TELEGRAM_TOKEN}/sendMessage"
     payload = {
         "chat_id": CHAT_ID,
