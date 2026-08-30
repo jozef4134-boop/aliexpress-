@@ -4,7 +4,7 @@ import time
 import threading
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 
-# 1. שרת דמי עבור Render למניעת קריסות
+# 1. שרת דמי עבור Render למניעת קריסות של השרות
 def start_dummy_server():
     try:
         port = int(os.environ.get("PORT", 10000))
@@ -36,8 +36,7 @@ def run_auto_post_cycle():
     )
     
     # פנייה ישירה ומדויקת ל-API הרשמי של טלגרם
-    telegram_url = "chat_id": "@DealsIL2026",
-
+    telegram_url = "https://telegram.org"
     payload = {
         "chat_id": "@DealsIL2026",
         "text": message_text,
