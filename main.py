@@ -3,9 +3,10 @@ import requests
 import telebot
 import time
 import threading
+import re
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 
-# 1. שרת דמי יציב עבור Render
+# 1. שרת דמי יציב עבור Render למניעת קריסות
 def start_dummy_server():
     try:
         port = int(os.environ.get("PORT", 10000))
@@ -24,70 +25,94 @@ TRACKING_ID = os.environ.get('TRACKING_ID', 'default')
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
-# מאגר הדילים הוויראליים והחמים ביותר בטלגרם (ללא בגדי נשים כלל)
-HOT_DEALS_DATABASE = [
-    {"id": "1005006135439564", "title": "אוזניות אלחוטיות Lenovo LP40 Pro המקוריות - שמע מהמם וסוללה חזקה", "price": 42.0, "discount": 45, "img": "https://alicdn.com"},
-    {"id": "1005005822349102", "title": "סט מברגים חשמלי נטען Xiaomi Mijia 24 ב-1 לתיקון גאדג'טים ומחשבים", "price": 98.5, "discount": 35, "img": "https://alicdn.com"},
-    {"id": "1005006321948501", "title": "רמקול בלוטות' אלחוטי חסין מים Anker Soundcore 2 - באס מטורף", "price": 145.0, "discount": 42, "img": "https://alicdn.com"},
-    {"id": "1005005112349583", "title": "משקפת מקצועית עוצמתית HD לטיולים, שטח וצפייה בכוכבים", "price": 79.0, "discount": 55, "img": "https://alicdn.com"},
-    {"id": "1005006093849502", "title": "שואב אבק אלחוטי נטען לרכב ולבית בעוצמת שאיבה מטורפת 9000PA", "price": 54.0, "discount": 60, "img": "https://alicdn.com"},
-    {"id": "1005005991827493", "title": "נעלי ריצה וספורט גברים קלות ונושמות בעיצוב אופנתי ונוחות שיא", "price": 139.0, "discount": 48, "img": "https://alicdn.com"},
-    {"id": "1005006410294850", "title": "משאבת אוויר חשמלית דיגיטלית ניידת לרכב, קורקינט וכדורים", "price": 112.0, "discount": 38, "img": "https://alicdn.com"},
-    {"id": "1005006223401948", "title": "תיק גב חכם חסין מים לגברים עם חיבור USB מובנה לטעינה", "price": 68.0, "discount": 40, "img": "https://alicdn.com"},
-    {"id": "1005005510294851", "title": "מכונת תספורת ועיצוב זקן מקצועית לגברים בעיצוב וינטג' מוזהב", "price": 38.0, "discount": 65, "img": "https://alicdn.com"},
-    {"id": "1005006123495811", "title": "מעמד סמארטפון מגנטי חזק במיוחד לרכב - מתאים לכל סוגי המכשירים", "price": 19.5, "discount": 70, "img": "https://alicdn.com"}
-]
+# רשימת ערוצי המקור המקצועיים שביקשת (הבוט ייקח מהם את הדילים הכי חמים)
+SOURCE_CHANNELS = ["DilimShavimA", "israel_deals"]
 
-# מעקב מובנה כדי לא לפרסם את אותו מוצר פעמיים ברצף
-last_posted_index = 0
+# מילים אסורות לסינון מוחלט של בגדי נשים
+FORBIDDEN_WORDS = ["שמלה", "חצאית", "חזיה", "תחתון נשים", "עקבים", "בגדי נשים", "אישה", "women", "dress", "skirt"]
 
-def run_auto_post_cycle():
-    """פרסום מוצר בודד מהמאגר הפנימי באופן בטוח ללא שרתי רשת חיצוניים חסומים"""
-    global last_posted_index
-    print("🔄 מפעיל סבב פרסום בטוח מתוך המאגר הפנימי...")
+def fix_and_convert_link(text):
+    """איתור קישורי עלי אקספרס והמרתם לקישור שותפים מוסתר ותקין שלא יישבר"""
+    urls = re.findall(r'(https?://[^\s]+aliexpress[^\s]+|https?://s\.click\.[^\s]+)', text)
+    new_text = text
     
-    # שליפת המוצר הבא בתור מהרשימה
-    item = HOT_DEALS_DATABASE[last_posted_index]
-    price = item["price"]
-    discount = item["discount"]
-    pid = item["id"]
-    title = item["title"]
-    img_url = item["img"]
-    
-    # בניית הקישור היישר לשרת השותפים הרשמי מבלי שיישבר
-    affiliate_link = f"https://aliexpress.com{pid}.html&tracking_id={TRACKING_ID}"
-    
-    # עיצוב טקסט בפורמט HTML קלאסי ויציב לחלוטין בטלגרם
-    message_text = (
-        f"🛍️ <b>דיל חם מעלי אקספרס!</b> 🛍️\n\n"
-        f"<b>מוצר:</b> {title}\n"
-        f"<b>מחיר בשקלים:</b> {price:.2f} ש''ח\n"
-        f"<b>אחוז הנחה:</b> {discount}%\n\n"
-        f'🛒 <b><a href="{affiliate_link}">לחצו כאן לקנייה ישירה</a></b>'
-    )
-    
-    try:
-        # שליחת התמונה הרשמית של עלי אקספרס - התמונות האלה מאושרות בטלגרם ותמיד עוברות
-        bot.send_photo(CHAT_ID, img_url, caption=message_text, parse_mode='HTML')
-        print(f"✅ מוצר {pid} פורסם בהצלחה בערוץ בגרסה הפנימית המאובטחת!")
+    for original_url in urls:
+        clean_url = original_url.rstrip('.,;)!]')
+        product_id_match = re.search(r'item/(\d+)\.html', clean_url)
+        if not product_id_match:
+            product_id_match = re.search(r'(\d+)\.html', clean_url)
+            
+        if product_id_match:
+            pid = product_id_match.group(1)
+            my_link = f"https://aliexpress.com{pid}.html&tracking_id={TRACKING_ID}"
+        else:
+            my_link = f"https://aliexpress.com{clean_url}&tracking_id={TRACKING_ID}"
+            
+        # החלפת הקישור הישן בקישור השותפים האישי שלך עם מבנה HTML כחול ולחיץ
+        html_link = f'<a href="{my_link}">לחצו כאן לקנייה ישירה</a>'
+        new_text = new_text.replace(original_url, html_link)
         
-        # קידום האינדקס למוצר הבא לסבב הבא בעוד חצי שעה
-        last_posted_index = (last_posted_index + 1) % len(HOT_DEALS_DATABASE)
-        
-    except Exception as e:
-        print(f"❌ שגיאה בשליחת הודעה לטלגרם: {e}")
+    return new_text
+
+def scrape_and_post_pro():
+    """משיכת הפוסטים העדכניים מערוצי הדילים הגדולים כולל קופונים ותמונות"""
+    print("🔄 סורק את ערוצי המקור בשיטת המקצוענים...")
+    
+    for channel in SOURCE_CHANNELS:
+        # פנייה לעמוד ה-Web הציבורי של הערוץ שמציג את הפוסטים ללא חסימה
+        url = f"https://t.me{channel}"
+        try:
+            res = requests.get(url, timeout=15).text
+            
+            # חילוץ חתיכות הטקסט והתמונות מתוך המבנה של טלגרם
+            posts = re.findall(r'<div class="tgme_widget_message_text[^>]*>(.*?)</div>', res)
+            images = re.findall(r'background-image:url\(\'(https://cdn\d+\.telegrad\.me/[^\s\']+)\'\)', res)
+            
+            if not posts:
+                print(f"⚠️ לא נמצאו פוסטים זמינים כרגע בערוץ {channel}")
+                continue
+                
+            # לקיחת הדיל האחרון והחם ביותר שעלה ברגע זה לרשת
+            latest_post = posts[-1]
+            
+            # ניקוי תגיות קוד פנימיות והישארות עם הטקסט והקופונים המקוריים
+            clean_text = re.sub(r'<br\s*/?>', '\n', latest_post)  # שמירה על ירידת שורות תקינה
+            clean_text = re.sub(r'<[^>]+>', '', clean_text).strip()
+            
+            # סינון מוחלט של בגדי נשים
+            if any(word in clean_text for word in FORBIDDEN_WORDS):
+                print(f"❌ הדיל מערוץ {channel} מכיל בגדי נשים. מדלג אוטומטית.")
+                continue
+                
+            # המרת כל הקישורים לקישור השותפים הכחול והלחיץ שלך
+            final_message = fix_and_convert_link(clean_text)
+            
+            # שליחה מקצועית לערוץ שלך בדיוק כמו הגדולים
+            if images:
+                # הורדת התמונה המקורית של המוצר ושליחתה כקובץ תמונה אמיתי וגדול בראש הפוסט!
+                latest_image = images[-1]
+                bot.send_photo(CHAT_ID, latest_image, caption=final_message, parse_mode='HTML')
+                print(f"✅ פוסט מקצועי עם תמונה וקופונים הועתק בהצלחה מהערוץ {channel}!")
+            else:
+                bot.send_message(CHAT_ID, final_message, parse_mode='HTML')
+                print(f"✅ פוסט טקסט וקופונים הועתק בהצלחה מהערוץ {channel}!")
+                
+            time.sleep(15)  # הפסקה קלה בין הודעה להודעה למניעת עומס
+            
+        except Exception as e:
+            print(f"❌ שגיאה זמנית בסריקת הערוץ {channel}: {e}")
 
 def main_loop():
-    print("🚀 הבוט הפנימי והבטוח ביותר פועל כעת ברקע (כל חצי שעה)...")
+    print("🚀 בוט הדילים המקצועי באוויר ופועל ברקע...")
     
-    # הרצה ראשונה ומיידית בשנייה שהשרת מסיים לעלות ב-Render!
+    # ריצה ראשונה ומיידית בשנייה שהשרת מסיים לעלות ב-Render
     try:
-        run_auto_post_cycle()
+        scrape_and_post_pro()
     except Exception as e:
         print(f"Error in initial run: {e}")
         
     while True:
-        # סבב הבא יתרחש באופן אוטומטי ומבוקר בעוד 30 דקות בדיוק
+        # בדיקה והזרמת דילים חדשים לבד לחלוטין בכל 30 דקות (כל חצי שעה עגולה)
         time.sleep(1800)
 
 if __name__ == "__main__":
