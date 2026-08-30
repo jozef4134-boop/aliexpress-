@@ -20,27 +20,68 @@ threading.Thread(target=start_dummy_server, daemon=True).start()
 # 2. הגדרות ומשתני סביבה מהשרת (Render)
 TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
 CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID')
-# כאן הבוט ישתמש ב-Tracking ID שהגדרת ב-Render כדי שהעמלות ילכו אליך!
 TRACKING_ID = os.environ.get('TRACKING_ID', 'default')
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
-# מאגר הדילים האוטומטי - מעוצב עם אימוג'ים מותאמים (ללא נשים)
+# מאגר הדילים והקופונים האוטומטי - מעוצב וללא נשים
 HOT_DEALS_DATABASE = [
-    {"id": "1005006135439564", "title": "אוזניות אלחוטיות Lenovo LP40 Pro המקוריות - שמע מהמם, סינון רעשים וסוללה חזקה", "price": 42.0, "discount": 45, "emoji": "🎧"},
-    {"id": "1005005822349102", "title": "סט מברגים חשמלי נטען Xiaomi Mijia 24 ב-1 לתיקון גאדג'טים, מחשבים וסלולר", "price": 98.5, "discount": 35, "emoji": "🧰"},
-    {"id": "1005006321948501", "title": "רמקול בלוטות' אלחוטי חסין מים Anker Soundcore 2 - באס מטורף וסאונד נקי", "price": 145.0, "discount": 42, "emoji": "🔊"},
-    {"id": "1005005112349583", "title": "משקפת מקצועית עוצמתית HD לטיולים, שטח, טבע וצפייה בכוכבים", "price": 79.0, "discount": 55, "emoji": "🔭"},
-    {"id": "1005006093849502", "title": "שואב אבק אלחוטי נטען לרכב ולבית בעוצמת שאיבה מטורפת 9000PA", "price": 54.0, "discount": 60, "emoji": "🧹"},
-    {"id": "1005005991827493", "title": "נעלי ריצה וספורט גברים קלות ונושמות בעיצוב אופנתי ונוחות שיא", "price": 139.0, "discount": 48, "emoji": "👟"}
+    {
+        "id": "page_coupons", 
+        "title": "🎁 מרכז הקופונים הרשמי של אלי אקספרס! כנסו לאסוף קופוני חנות והנחות שוות לפני כולם", 
+        "price": 0.0, 
+        "discount": 100, 
+        "emoji": "🏷️",
+        "custom_url": "https://aliexpress.com" # עמוד קופונים כללי
+    },
+    {
+        "id": "1005006135439564", 
+        "title": "אוזניות אלחוטיות Lenovo LP40 Pro המקוריות - שמע מהמם, סינון רעשים וסוללה חזקה", 
+        "price": 42.0, 
+        "discount": 45, 
+        "emoji": "🎧",
+        "custom_url": None # מוצר רגיל (יבנה לפי ה-ID)
+    },
+    {
+        "id": "1005005822349102", 
+        "title": "סט מברגים חשמלי נטען Xiaomi Mijia 24 ב-1 לתיקון גאדג'טים, מחשבים וסלולר", 
+        "price": 98.5, 
+        "discount": 35, 
+        "emoji": "🧰",
+        "custom_url": None
+    },
+    {
+        "id": "page_superdeals", 
+        "title": "⚡ עמוד הדילים המטורפים (Super Deals) - הנחות קבועות של מעל 35% על המוצרים הכי פופולריים", 
+        "price": 0.0, 
+        "discount": 50, 
+        "emoji": "🔥",
+        "custom_url": "https://aliexpress.com" # עמוד מבצעים כללי
+    },
+    {
+        "id": "1005006321948501", 
+        "title": "רמקול בלוטות' אלחוטי חסין מים Anker Soundcore 2 - באס מטורף וסאונד נקי", 
+        "price": 145.0, 
+        "discount": 42, 
+        "emoji": "🔊",
+        "custom_url": None
+    },
+    {
+        "id": "1005005112349583", 
+        "title": "משקפת מקצועית עוצמתית HD לטיולים, שטח, טבע וצפייה בכוכבים", 
+        "price": 79.0, 
+        "discount": 55, 
+        "emoji": "🔭",
+        "custom_url": None
+    }
 ]
 
 last_posted_index = 0
 
 def run_auto_post_cycle():
-    """הלולאה האוטומטית שמייצרת ומדביקה את הקישורים לבד"""
+    """הלולאה האוטומטית שמזהה את סוג הקישור, מדביקה מעקב ומפרסמת"""
     global last_posted_index
-    print("🔄 מפעיל סבב פרסום אוטומטי ומדביק קישור מעקב...")
+    print("🔄 מפעיל סבב פרסום אוטומטי ובניית קישור תקין...")
     
     item = HOT_DEALS_DATABASE[last_posted_index]
     price = item["price"]
@@ -48,26 +89,40 @@ def run_auto_post_cycle():
     pid = item["id"]
     title = item["title"]
     emoji = item["emoji"]
+    custom_url = item.get("custom_url")
     
     last_posted_index = (last_posted_index + 1) % len(HOT_DEALS_DATABASE)
     
-    # הבוט מדביק ובונה בעצמו את הקישור הרשמי והתקין של אליאקספרס יחד עם ה-Tracking ID שלך!
-    affiliate_link = f"https://aliexpress.com{pid}.html?sourceType=affiliate&trackingId={TRACKING_ID}"
+    # מנגנון חכם: אם הגדרנו עמוד קופונים/מבצעים כללי - נשתמש בו. אם לא - נבנה קישור מוצר רגיל
+    if custom_url:
+        raw_link = custom_url
+    else:
+        raw_link = f"https://aliexpress.com{pid}.html"
     
-    # טקסט נקי, ברור ומקצועי ללא תגיות שבורות
+    # הבוט מדביק ומצמיד את ה-Tracking ID שלך לסוף הקישור בצורה נורמלית לחלוטין
+    if "?" in raw_link:
+        affiliate_link = f"{raw_link}&sourceType=affiliate&trackingId={TRACKING_ID}"
+    else:
+        affiliate_link = f"{raw_link}?sourceType=affiliate&trackingId={TRACKING_ID}"
+    
+    # בניית הפוסט המעוצב לטלגרם
+    if price > 0:
+        price_text = f"<b>מחיר בשקלים:</b> {price:.2f} ש''ח\n"
+    else:
+        price_text = "<b>מחיר:</b> קופוני הנחה משתנים! 🎁\n"
+
     message_text = (
         f"{emoji} <b>דיל חם מעלי אקספרס!</b> {emoji}\n\n"
         f"<b>מוצר:</b> {title}\n"
-        f"<b>מחיר בשקלים:</b> {price:.2f} ש''ח\n"
+        f"{price_text}"
         f"<b>אחוז הנחה:</b> {discount}%\n\n"
         f"🛒 לקנייה ישירה לחצו על הקישור הכחול:\n"
         f"{affiliate_link}"
     )
     
     try:
-        # שליחת הודעת טקסט רגילה במצב HTML
         bot.send_message(CHAT_ID, message_text, parse_mode='HTML')
-        print(f"🎯 הצלחה מוחלטת! מוצר {pid} פורסם והודבק בהצלחה!")
+        print(f"🎯 הצלחה מוחלטת! הפוסט שוגר בהצלחה עם קישור נורמלי פעיל!")
     except Exception as e:
         print(f"❌ שגיאה בשליחה: {e}")
 
@@ -80,7 +135,7 @@ def posting_loop():
         print(f"Error in initial run: {e}")
         
     while True:
-        time.sleep(1800) # 30 דקות בשניות
+        time.sleep(1800) # חצי שעה בשניות
         try:
             run_auto_post_cycle()
         except Exception as e:
@@ -89,7 +144,6 @@ def posting_loop():
 if __name__ == "__main__":
     print("🚀 הבוט האוטומטי מתחיל לעבוד...")
     
-    # מחיקת וובהוקים וניקוי בקשות ישנות למניעת שגיאת Conflict
     try:
         bot.remove_webhook()
         bot.get_updates(offset=-1)
@@ -97,8 +151,5 @@ if __name__ == "__main__":
     except:
         pass
         
-    # הפעלת לולאת הפרסום ב-Thread נפרד כדי שלא תחסום את הקוד
     threading.Thread(target=posting_loop, daemon=True).start()
-    
-    # הפעלה יציבה של הבוט
     bot.infinity_polling(timeout=20, long_polling_timeout=10)
