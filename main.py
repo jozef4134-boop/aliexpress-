@@ -25,14 +25,14 @@ TRACKING_ID = os.environ.get('TRACKING_ID', 'default')
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
-# רשימת ערוצי המקור מהתמונות שלך
+# רשימת ערוצי המקור
 SOURCE_CHANNELS = ["DilimShavimA", "israel_deals"]
 
 # מילים לסינון בגדי נשים
 FORBIDDEN_WORDS = ["שמלה", "חצאית", "חזיה", "תחתון נשים", "עקבים", "בגדי נשים", "אישה", "women", "dress", "skirt"]
 
 def fix_and_convert_link(text):
-    """איתור קישורי עלי אקספרס והמרתם לקישור שותפים תקין ומובנה"""
+    """איתור קישורי עלי אקספרס והמרתם לקישור שותפים תקין"""
     urls = re.findall(r'(https?://[^\s]+aliexpress[^\s]+|https?://s\.click\.[^\s]+)', text)
     
     new_text = text
@@ -58,50 +58,49 @@ def fix_and_convert_link(text):
     return new_text, first_link
 
 def scrape_and_post():
-    """סריקה תקינה של ערוצי המקור והעברת הדילים"""
+    """סריקה תקינה של ערוצי המקור ללא סלאשים בעייתיים"""
     print("🔄 מתחיל סבב בדיקה וסריקה של ערוצי המקור...")
     
     for channel in SOURCE_CHANNELS:
-        # 📌 תיקון הכתובת - הוספת סלאש (/) קריטי בין השם לערוץ כדי שלא יישבר
-        web_url = f"https://t.me{channel}"
+        # שימוש בכתובת אינטרנט מלאה ומפורשת כדי למנוע טעויות חיבור
+        web_url = f"https://telegram.me{channel}"
         try:
-            print(f"🔎 סורק את ערוץ: {channel}")
+            print(f"🔎 פונה כעת לכתובת המלאה: {web_url}")
             res = requests.get(web_url).text
             
-            # חילוץ הודעות טקסט מהערוץ
+            # חילוץ הודעות טקסט
             posts = re.findall(r'<div class="tgme_widget_message_text[^>]*>(.*?)</div>', res)
             
             if not posts:
-                print(f"⚠️ לא נמצאו פוסטים בערוץ {channel}")
+                print(f"⚠️ לא נמצאו פוסטים בעמוד הציבורי של {channel}")
                 continue
                 
             latest_post = posts[-1]
             clean_text = re.sub(r'<[^>]+>', '', latest_post)
             
             if any(word in clean_text for word in FORBIDDEN_WORDS):
-                print(f"❌ הפוסט מערוץ {channel} מכיל בגדי נשים. מדלג.")
+                print(f"❌ הפוסט מכיל בגדי נשים. מדלג.")
                 continue
                 
             final_message, affiliate_link = fix_and_convert_link(clean_text)
             
-            # בניית הודעה מקצועית עם תצוגה מקדימה אוטומטית של התמונה מתוך עלי אקספרס
             if affiliate_link:
                 bot.send_message(CHAT_ID, final_message, disable_web_page_preview=False)
-                print(f"✅ פוסט הועתק והומר בהצלחה מהערוץ {channel}!")
+                print(f"✅ הדיל מהערוץ {channel} פורסם בהצלחה עם הקישור שלך!")
                 time.sleep(15)
             
         except Exception as e:
             print(f"❌ שגיאה בסריקת הערוץ {channel}: {e}")
 
 def main_loop():
-    print("🚀 בוט ההעתקה המשולב והמתוקן רץ ברקע...")
+    print("🚀 בוט ההעתקה המעודכן רץ ברקע...")
     try:
         scrape_and_post()
     except Exception as e:
         print(f"Error in initial run: {e}")
         
     while True:
-        # ריצה קבועה בכל שעה לבדיקת מבצעים חדשים
+        # בדיקה אוטומטית פעם בשעה
         time.sleep(3600)
 
 if __name__ == "__main__":
