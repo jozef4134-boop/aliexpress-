@@ -29,7 +29,7 @@ TRACKING_ID = os.environ.get('TRACKING_ID')
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 israel_tz = pytz.timezone('Asia/Jerusalem')
 
-# מילות מפתח ממוקדות לקטגוריות שביקשת
+# מילות מפתח ממוקדות לקטגוריות שביקשת (ללא נשים)
 KEYWORDS = ["fitness", "gadgets", "tshirt", "earphones", "charger", "shoes", "clothing"]
 
 # זיכרון יומי לשמירת הקישורים עבור הודעת הסיכום
@@ -47,6 +47,7 @@ def get_hot_products():
         'page_size': 40
     }
     try:
+        print("🔄 מנסה למשוך מוצרים מעלי אקספרס...")
         response = requests.get(url, params=params).json()
         return response.get('result', {}).get('products', [])
     except Exception as e:
@@ -59,6 +60,10 @@ def check_and_post_3_products():
     products = get_hot_products()
     posted_count = 0
     
+    if not products:
+        print("⚠️ לא נמצאו מוצרים חדשים בסבב זה.")
+        return
+
     for product in products:
         if posted_count >= 3:
             break
@@ -75,17 +80,30 @@ def check_and_post_3_products():
         if original_price <= 0:
             continue
 
+        # חישוב אחוז ההנחה והמחיר בשקלים
         discount_percent = ((original_price - sale_price) / original_price) * 100
         price_in_ils = sale_price * 3.65
+        
+        print(f"🔎 בודק: {title[:20]}... | מחיר: ₪{price_in_ils:.2f} | הנחה: {discount_percent:.0f}%")
+
+        # ---------------------------------------------------------
+        # חוקי הסינון החדשים שלך:
+        # ---------------------------------------------------------
         should_post = False
         
-        # תנאי הסינון שלך
-        if price_in_ils < 120 and discount_percent >= 30:
+        # 1. מוצרים עד 120 ש"ח עם לפחות 25% הנחה
+        if price_in_ils <= 120 and discount_percent >= 25:
             should_post = True
-        elif price_in_ils > 200 and discount_percent >= 50:
+            print("   -> עומד בתנאי: עד 120 ש''ח עם מעל 25% הנחה")
+            
+        # 2. מוצרים מעל 125 ש"ח עם לפחות 40% הנחה
+        elif price_in_ils > 125 and discount_percent >= 40:
             should_post = True
+            print("   -> 🎯 עומד בתנאי: מעל 125 ש''ח עם מעל 40% הנחה!")
 
-        if should_post:
+        # ---------------------------------------------------------
+
+        if should_post and affiliate_link:
             short_description = " ".join(title.split()[:8])
             message_text = (
                 f"🔥 **דיל חם ואטרקטיבי!** 🔥\n\n"
@@ -98,6 +116,7 @@ def check_and_post_3_products():
                 bot.send_photo(CHAT_ID, image_url, caption=message_text, parse_mode='Markdown')
                 daily_deals_summary.append({"title": short_description, "link": affiliate_link})
                 posted_count += 1
+                print(f"✅ מוצר נשלח בהצלחה לטלגרם ({posted_count}/3)")
                 time.sleep(5)
             except Exception as e:
                 print(f"Telegram send error: {e}")
@@ -114,7 +133,7 @@ def send_daily_summary():
     for idx, deal in enumerate(daily_deals_summary, 1):
         summary_text += f"{idx}. [{deal['title']}]({deal['link']})\n"
         
-    summary_text += "\n❤️ לילה טוב לכולם ונתראה מחר עם דילים חדשים!"
+    summary_text += "\n❤️ לילה טוב לכולם ונתראה מחר WITH דילים חדשים!"
     
     try:
         bot.send_message(CHAT_ID, summary_text, parse_mode='Markdown', disable_web_page_preview=True)
@@ -141,15 +160,15 @@ def main_loop():
         # 2. שליחת סיכום יום (בכל יום בשעה 23:00)
         if hour == 23 and minute < 10:
             send_daily_summary()
-            time.sleep(600)
+            time.sleep(10)
             continue
 
-        # 3. הרצה שעתית (רק בין 08:00 בבוקר ל-22:59 בלילה)
-        if 8 <= hour <= 22:
-            print(f"Hourly trigger activated at {now.strftime('%H:%M')}")
-            check_and_post_3_products()
+        # 3. הרצה מהירה לבדיקה (כל 10 שניות)
+        print(f"Trigger activated at {now.strftime('%H:%M:%S')}")
+        check_and_post_3_products()
             
-        time.sleep(3600)
+        # שינוי זמני ל-10 שניות כדי לראות תוצאות מיידיות בלוגים
+        time.sleep(10)
 
 if __name__ == "__main__":
     main_loop()
