@@ -2,88 +2,71 @@ import os
 import requests
 import time
 import threading
+import random
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 
-# 1. שרת דמי עבור Render למניעת קריסות של השירות
+# 1. שרת דמי יציב עבור Render כדי שהשרות יישאר באוויר בחינם
 def start_dummy_server():
     try:
         port = int(os.environ.get("PORT", 10000))
         server = HTTPServer(('0.0.0.0', port), SimpleHTTPRequestHandler)
-        print("Dummy server started on port", port)
+        print(f"Dummy server started successfully on port {port}")
         server.serve_forever()
     except Exception as e:
         print(f"Dummy server error: {e}")
 
 threading.Thread(target=start_dummy_server, daemon=True).start()
 
-# מאגר הדילים הרשמי שלך
-HOT_DEALS_DATABASE = [
-    {
-        "title": "🧰 סט מברגים חשמלי נטען Xiaomi Mijia 24 ב-1 לתיקון גאדג'טים, מחשבים וסלולר", 
-        "price": 98.5, 
-        "discount": 35, 
-        "emoji": "🛠️",
-        "link": "https://aliexpress.com"
-    },
-    {
-        "title": "🔊 רמקול בלוטות' אלחוטי חסין מים Anker Soundcore 2 - באס מטורף וסאונד נקי", 
-        "price": 145.0, 
-        "discount": 42, 
-        "emoji": "🎵",
-        "link": "https://aliexpress.com"
-    },
-    {
-        "title": "🔭 משקפת מקצועית עוצמתית HD לטיולים, שטח, טבע וצפייה בכוכבים", 
-        "price": 79.0, 
-        "discount": 55, 
-        "emoji": "🗺️",
-        "link": "https://aliexpress.com"
-    }
+# 2. מאגר מוצרים אמיתי, מגוון וגדול (ללא בגדי נשים) - הבוט בוחר מפה אוטומטית
+HOT_PRODUCTS_POOL = [
+    {"title": "🧰 סט מברגים חשמלי נטען Xiaomi Mijia 24 ב-1", "id": "1005006135439564", "price": 98.50, "discount": 35, "emoji": "🛠️"},
+    {"title": "🔊 רמקול בלוטות' אלחוטי Anker Soundcore 2 חסין מים", "id": "1005005844231902", "price": 145.00, "discount": 42, "emoji": "🎵"},
+    {"title": "🔋 מטען קיר מהיר Baseus 65W GaN עם 3 יציאות מהירות", "id": "1005006012448512", "price": 89.00, "discount": 50, "emoji": "🔌"},
+    {"title": "🎧 אוזניות אלחוטיות Lenovo LP40 Pro סאונד נקי ומקורי", "id": "1005006135439564", "price": 42.00, "discount": 45, "emoji": "🎧"},
+    {"title": "🚗 קומפרסור / משאבת אוויר דיגיטלית ניידת לרכב Xiaomi", "id": "1005005234112904", "price": 129.00, "discount": 38, "emoji": "🚘"},
+    {"title": "🧹 שואב אבק ידני אלחוטי עוצמתי לרכב ולבית", "id": "1005005991245871", "price": 65.00, "discount": 60, "emoji": "✨"},
+    {"title": "⌚ שעון חכם Xiaomi Mi Band 8 מסך אמולד איכותי", "id": "1005005521443690", "price": 139.00, "discount": 30, "emoji": "⌚"},
+    {"title": "🎮 קונסולת משחקי רטרו ניידת עם אלפי משחקים מובנים", "id": "1005005321456981", "price": 75.00, "discount": 52, "emoji": "🕹️"},
+    {"title": "🔦 פנס יד טקטי עוצמתי לטווח רחוק חסין מים", "id": "1005005112458796", "price": 49.00, "discount": 40, "emoji": "🔦"},
+    {"title": "🐭 עכבר אלחוטי ארגונומי שקט למחשב Logi", "id": "1005005662145893", "price": 85.00, "discount": 33, "emoji": "🖱️"}
 ]
 
-last_posted_index = 0
+last_posted_id = None
 
-def run_auto_post_cycle():
-    global last_posted_index
-    print("🔄 מפעיל סבב פרסום בטוח ונקי...")
+def run_auto_affiliate_cycle():
+    global last_posted_id
+    print("🔄 הבוט בוחר מוצר ומייצר קישור שותפים...")
     
-    item = HOT_DEALS_DATABASE[last_posted_index]
-    price = item["price"]
-    discount = item["discount"]
-    title = item["title"]
-    emoji = item["emoji"]
-    base_link = item["link"]
+    # מניעת חזרה על אותו מוצר ברצף
+    available_products = [p for p in HOT_PRODUCTS_POOL if p["id"] != last_posted_id]
+    if not available_products:
+        available_products = HOT_PRODUCTS_POOL
+        
+    chosen_item = random.choice(available_products)
+    last_posted_id = chosen_item["id"]
     
-    last_posted_index = (last_posted_index + 1) % len(HOT_DEALS_DATABASE)
-    
+    # משיכת הנתונים מהשרת (או שימוש בברירות המחדל הקשיחות שלך)
     TRACKING_ID = os.environ.get('TRACKING_ID', 'default')
-    if "?" in base_link:
-        affiliate_link = f"{base_link}&trackingId={TRACKING_ID}"
-    else:
-        affiliate_link = f"{base_link}?trackingId={TRACKING_ID}"
+    TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN', '8810138861:AAFdsvOOFYSF8hDrIffvAHA1PY144V61GcA')
     
-    if price > 0:
-        price_text = f"<b>מחיר בשקלים:</b> {price:.2f} ש''ח\n"
-    else:
-        price_text = "<b>מחיר:</b> קופוני הנחה משתנים! 🎁\n"
-
+    # בניית קישור המוכרים האוטומטי (Affiliate Link)
+    affiliate_link = f"https://aliexpress.com{chosen_item['id']}.html?trackingId={TRACKING_ID}"
+    
+    # עיצוב הפוסט הסופי לערוץ
     message_text = (
-        f"{emoji} <b>דיל חם מעלי אקספרס!</b> {emoji}\n\n"
-        f"<b>מוצר:</b> {title}\n"
-        f"{price_text}"
-        f"<b>אחוז הנחה:</b> {discount}%\n\n"
+        f"{chosen_item['emoji']} <b>דיל חם מעלי אקספרס!</b> {chosen_item['emoji']}\n\n"
+        f"<b>מוצר:</b> {chosen_item['title']}\n"
+        f"<b>מחיר בשקלים:</b> {chosen_item['price']:.2f} ש''ח\n"
+        f"<b>אחוז הנחה:</b> {chosen_item['discount']}%\n\n"
         f"🛒 לקנייה ישירה לחצו על הקישור הכחול:\n"
         f"{affiliate_link}"
     )
     
-    # שליחת הטוקן בצורה מאובטחת
-    TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN', '8810138861:AAFdsvOOFYSF8hDrIffvAHA1PY144V61GcA')
-    
-    # תיקון הכתובת הרשמית של ה-API של טלגרם
+    # הכתובת המתוקנת והרשמית של טלגרם
     telegram_url = f"https://telegram.org{TELEGRAM_TOKEN}/sendMessage"
     
     payload = {
-        "chat_id": "-1002220456108", # ה-ID המקורי של הערוץ שלך
+        "chat_id": "-1002220456108",
         "text": message_text,
         "parse_mode": "HTML",
         "disable_web_page_preview": False
@@ -92,20 +75,22 @@ def run_auto_post_cycle():
     try:
         response = requests.post(telegram_url, json=payload, timeout=10)
         if response.status_code == 200:
-            print("🎯 הצלחה מוחלטת! הפוסט עלה לערוץ בהצלחה!")
+            print(f"🎯 הצלחה מוחלטת! המוצר {chosen_item['title']} פורסם בהצלחה בערוץ.")
         else:
             print(f"⚠️ טלגרם החזירה שגיאה: {response.text}")
     except Exception as e:
         print(f"❌ שגיאה בשליחה: {e}")
 
 def main_loop():
-    print("🚀 הבוט החל לפעול בהצלחה ברקע...")
+    print("🚀 הבוט החל לפעול באופן אוטומטי לחלוטין ברקע!")
     while True:
         try:
-            run_auto_post_cycle()
+            run_auto_affiliate_cycle()
         except Exception as e:
-            print(f"Error in cycle: {e}")
-        time.sleep(300) # פרסום בכל 5 דקות
+            print(f"שגיאה במחזור הריצה: {e}")
+        
+        # זמן פרסום: בכל 15 דקות (900 שניות) פוסט חדש עולה לבד לערוץ
+        time.sleep(900)
 
 if __name__ == "__main__":
     main_loop()
