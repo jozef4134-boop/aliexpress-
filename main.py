@@ -2,9 +2,10 @@ import os
 import requests
 import time
 import threading
+import random
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 
-# 1. שרת דמי עבור Render למניעת קריסות
+# 1. שרת דמי עבור Render למניעת קריסות של השירות
 def start_dummy_server():
     try:
         port = int(os.environ.get("PORT", 10000))
@@ -16,40 +17,57 @@ def start_dummy_server():
 
 threading.Thread(target=start_dummy_server, daemon=True).start()
 
-# 2. הנתונים המדויקים של הבוט והערוץ שלך
-TOKEN = "8810138861:AAFdsv00FYSF8hDrIffvAHA1PY144V61GcA"
-CHANNEL_ID = "-1002220456108"
+# 2. נתוני הבוט הרשמיים שלך (מחוברים קשיח לקוד)
+TOKEN = "8810138861:AAFdsv00FYSF6hDrIffvAHA1PY144V61GcA"
 
-def send_immediate_activation_message():
-    print("🔥 מפעיל שליחה מיידית לערוץ טלגרם...")
+# מאגר פסוקי תהילים מחזקים
+TEHILIM_VERSES = [
+    "📖 <b>ספר תהילים:</b>\n\n『 יְהוָה רֹעִי, לֹא אֶחְסָר. בִּנְאוֹת דֶּשֶׁא יַרְבִּיצֵנִי, עַל מֵי מְנֻחוֹת יְנַהֲלֵנִי. 』\n\n✨ השם ישמור אותך ואת משפחתך, בשורות טובות!",
+    "📖 <b>ספר תהילים:</b>\n\n『 שִׁיר, לַמַּעֲלוֹת: אֶשָּׂא עֵינַי, אֶל-הֶהָרִים--מֵאַיִן, יָבֹא עֶזְרִי. עֶזְרִי, מֵעִם יְהוָה--עֹשֵׂה, שָׁמַיִם וָאָרֶץ. 』\n\n✨ ישועת השם כהרף עין! ברכה והצלחה בכל מעשה ידיך.",
+    "📖 <b>ספר תהילים:</b>\n\n『 יְהוָה שֹׁמְרֶךָ, יְהוָה צִלְּךָ עַל יַד יְמִינֶךָ. יוֹמָם הַשֶּׁמֶשׁ לֹא יַכֶּכָּה וְיָרֵחַ בַּלָּיְלָה. 』\n\n✨ שמירה עליונה והגנה מכל רע מעכשיו ועד עולם.",
+    "📖 <b>ספר תהילים:</b>\n\n『 קַוֵּה אֶל יְהוָה חֲזַק וְיַאֲמֵץ לִבֶּךָ וְקַוֵּה אֶל יְהוָה. 』\n\n✨ אל תירא ואל תפחד, הישועה קרובה לבוא. חזק וברוך!",
+    "📖 <b>ספר תהילים:</b>\n\n『 גּוֹל עַל יְהוָה דַּרְכֶּךָ וּבְטַח עָלָיו וְהוּא יַעֲשֶׂה. 』\n\n✨ שים מבטחך בבורא עולם והכל יסתדר לטובה בקרוב מאוד."
+]
+
+def check_messages():
+    last_id = 0
+    url = f"https://telegram.org{TOKEN}/getUpdates"
+    print("🚀 בוט תהילים התניע בהצלחה ומקשיב להודעות שלכם...")
     
-    url = f"https://telegram.org{TOKEN}/sendMessage"
-    
-    # תוכן ההודעה המיידית
-    payload = {
-        "chat_id": CHANNEL_ID,
-        "text": "📢 הערוץ פעיל רשמית! הבוט מחובר ברקע ועובד.",
-        "parse_mode": "HTML"
-    }
-    
-    try:
-        # שליחה ישירה ללא המתנה
-        response = requests.post(url, json=payload, timeout=10)
-        print(f"📡 קוד סטטוס מטלגרם: {response.status_code}")
-        print(f"📝 תשובה רשמית משרתי טלגרם: {response.text}")
-        
-        if response.status_code == 200:
-            print("🎯 הצלחה! ההודעה עלתה לערוץ בהצלחה מרובה.")
-        else:
-            print("⚠️ טלגרם סירבה לקבל את ההודעה. בדוק את השגיאה למעלה.")
+    while True:
+        try:
+            payload = {"offset": last_id + 1, "timeout": 30}
+            res = requests.get(url, params=payload, timeout=35)
             
-    except Exception as e:
-        print(f"❌ שגיאת תקשורת חמורה מול טלגרם: {e}")
+            if res.status_code == 200:
+                response = res.json()
+                if "result" in response:
+                    for update in response["result"]:
+                        last_id = update["update_id"]
+                        
+                        if "message" in update and "chat" in update["message"]:
+                            chat_id = update["message"]["chat"]["id"]
+                            print(f"📩 התקבלה בקשה לתהילים ממשתמש שמספרו: {chat_id}")
+                            
+                            # בחירת פסוק אקראי מחזק מהמאגר
+                            chosen_verse = random.choice(TEHILIM_VERSES)
+                            
+                            # שליחת הפסוק ישירות למשתמש בפרטי
+                            send_url = f"https://telegram.org{TOKEN}/sendMessage"
+                            send_payload = {
+                                "chat_id": chat_id,
+                                "text": chosen_verse,
+                                "parse_mode": "HTML"
+                            }
+                            requests.post(send_url, json=send_payload, timeout=10)
+                            print("🎯 פסוק תהילים נשלח בהצלחה!")
+                            
+            elif res.status_code == 409:
+                time.sleep(5)
+        except Exception as e:
+            print(f"שגיאה זמנית בלולאה: {e}")
+            time.sleep(5)
+        time.sleep(1)
 
 if __name__ == "__main__":
-    # הפעלה מיידית ברגע שהקוד נדלק
-    send_immediate_activation_message()
-    
-    # השארת התהליך באוויר
-    while True:
-        time.sleep(5)
+    check_messages()
