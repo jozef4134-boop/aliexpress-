@@ -23,8 +23,8 @@ CHANNEL_ID = "-1002220456108"
 TRACKING_ID = os.environ.get('TRACKING_ID', 'default')
 
 def extract_item_id(url):
-    """מציא את ה-ID של המוצר מתוך כל סוג של קישור אלי אקספרס"""
-    match = re.search(match = re.search(r'/item/(\d+)\.html', url))
+    """מוצא את ה-ID של המוצר מתוך כל סוג של קישור אלי אקספרס"""
+    match = re.search(r'/item/(\d+)\.html', url)
     if match:
         return match.group(1)
     # ניסיון נוסף לקישורים קצרים או שונים
@@ -87,7 +87,7 @@ def check_messages():
                                 # שליחה לערוץ
                                 send_to_channel(affiliate_link)
                                 
-                                # החזרת תשובה ל משתמש בפרטי שהצליח
+                                # החזרת תשובה למשתמש בפרטי שהצליח
                                 requests.post(f"https://telegram.org{TELEGRAM_TOKEN}/sendMessage", json={
                                     "chat_id": chat_id,
                                     "text": "✅ הקישור הומר בהצלחה לקישור שותפים ופורסם בערוץ!"
