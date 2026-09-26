@@ -23,22 +23,22 @@ CHANNEL = os.environ.get('CHAT_ID', '-1002220456108')
 TRACKING_ID = os.environ.get('TRACKING_ID', 'default')
 
 def extract_item_id(url):
-    """מנגנון חילוץ חכם במיוחד לכל סוגי הקישורים של עלי אקספרס"""
-    # 1. ניסיון חילוץ מקישור ארוך סטנדרטי /item/123456.html
-    match = re.search(r'/item/(\d+)\.html', url)
-    if match:
-        return match.group(1)
+    """מחלץ חכם שמנקה את כל הרעש מסביב ומחפש את ה-ID של עלי אקספרס"""
+    try:
+        # ניקוי הקישור מפרמטרים של חיפוש (כל מה שבא אחרי סימן השאלה) כדי להישאר רק עם כתובת המוצר
+        clean_url = url.split('?')[0]
         
-    # 2. ניסיון חילוץ מקישורים שבהם ה-ID מופיע אחרי סימן שאלה או לוכסן ללא .html
-    match_alt = re.search(r'/item/(\d+)', url)
-    if match_alt:
-        return match_alt.group(1)
-        
-    # 3. ניסיון אחרון - מציאת רצף המספרים הארוך ביותר בקישור שמתאים ל-ID של מוצר באלי אקספרס
-    numbers = re.findall(r'(\d{10,20})', url)
-    if numbers:
-        return numbers[0] # לוקח את מספר ה-ID הראשון שזוהה
-        
+        # חיפוש מזהה מוצר רגיל בתוך הכתובת הנקייה
+        match = re.search(r'/item/(\d+)', clean_url)
+        if match:
+            return match.group(1)
+            
+        # גיבוי: חיפוש רצף מספרים ארוך בתוך הכתובת הנקייה בלבד
+        numbers = re.findall(r'(\d{10,20})', clean_url)
+        if numbers:
+            return numbers[0]
+    except Exception as e:
+        print(f"Error extracting ID: {e}")
     return None
 
 def send_to_channel(clean_link):
@@ -73,9 +73,12 @@ def check_messages():
                             text = update["message"]["text"]
                             cid = update["message"]["chat"]["id"]
                             
+                            # הדפסה ללוגים כדי לוודא בזמן אמת שההודעה התקבלה בשרת
+                            print(f"📩 התקבלה הודעה חדשה בצ'אט: {text[:30]}...")
+                            
                             if "aliexpress" in text.lower() or "aliex.press" in text.lower():
-                                print(f"📩 קישור התקבל ומעובד כעת...")
                                 item_id = extract_item_id(text)
+                                print(f"🔍 מזהה מוצר שחולץ: {item_id}")
                                 
                                 if item_id:
                                     aff_link = f"https://aliexpress.com{item_id}.html?trackingId={TRACKING_ID}"
@@ -88,7 +91,7 @@ def check_messages():
                                 else:
                                     requests.post(f"https://telegram.org{TOKEN}/sendMessage", json={
                                         "chat_id": cid, 
-                                        "text": "❌ לא הצלחתי לחלץ את מזהה המוצר. נסה לשלוח קישור קצר או נקי יותר."
+                                        "text": "❌ לא הצלחתי לחלץ את מזהה המוצר מהקישור הארוך."
                                     })
             elif res.status_code == 409:
                 time.sleep(10)
