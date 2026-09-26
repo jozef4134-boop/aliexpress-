@@ -30,9 +30,17 @@ TEHILIM_VERSES = [
 ]
 
 def check_messages():
-    last_id = 0
+    # מחיקת היסטוריית ההודעות הישנה משרתי טלגרם בשנייה הזו
     url = f"https://telegram.org{TOKEN}/getUpdates"
-    print("🚀 בוט תהילים התניע בהצלחה ומקשיב להודעות שלכם...")
+    try:
+        # שליחת בקשה עם offset=-1 מנקה לחלוטין את כל התור הישן של עלי אקספרס
+        requests.get(url, params={"offset": -1, "timeout": 1})
+        print("🧹 כל ההיסטוריה הישנה של טלגרם נמחקה בהצלחה!")
+    except:
+        pass
+
+    last_id = 0
+    print("🚀 בוט תהילים נקי התניע ומקשיב רק להודעות חדשות...")
     
     while True:
         try:
@@ -47,12 +55,10 @@ def check_messages():
                         
                         if "message" in update and "chat" in update["message"]:
                             chat_id = update["message"]["chat"]["id"]
-                            print(f"📩 התקבלה בקשה לתהילים ממשתמש שמספרו: {chat_id}")
+                            print(f"📩 התקבלה הודעה חדשה, שולח תהילים ל: {chat_id}")
                             
-                            # בחירת פסוק אקראי מחזק מהמאגר
                             chosen_verse = random.choice(TEHILIM_VERSES)
                             
-                            # שליחת הפסוק ישירות למשתמש בפרטי
                             send_url = f"https://telegram.org{TOKEN}/sendMessage"
                             send_payload = {
                                 "chat_id": chat_id,
@@ -60,12 +66,11 @@ def check_messages():
                                 "parse_mode": "HTML"
                             }
                             requests.post(send_url, json=send_payload, timeout=10)
-                            print("🎯 פסוק תהילים נשלח בהצלחה!")
+                            print("🎯 פסוק תהילים נשלח!")
                             
             elif res.status_code == 409:
                 time.sleep(5)
         except Exception as e:
-            print(f"שגיאה זמנית בלולאה: {e}")
             time.sleep(5)
         time.sleep(1)
 
