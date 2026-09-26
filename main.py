@@ -23,13 +23,12 @@ CHANNEL_ID = "-1002220456108"
 TRACKING_ID = os.environ.get('TRACKING_ID', 'default')
 
 def extract_item_id(url):
-    """מחלץ את מזהה המוצר מתוך כל סוג של קישור אלי אקספרס (קצר או ארוך)"""
-    # חיפוש לפי המבנה הסטנדרטי /item/NUMBER.html
+    """מחלץ את מזהה המוצר מתוך כל סוג של קישור אלי אקספרס"""
     match = re.search(r'/item/(\d+)\.html', url)
     if match:
         return match.group(1)
     
-    # חיפוש כל רצף מספרים ארוך בקישור שמתאים ל-ID של מוצר
+    # ניסיון נוסף לקישורים קצרים או מובנים אחרת
     numbers = re.findall(r'(\d{10,20})', url)
     if numbers:
         return numbers[0]
@@ -78,19 +77,14 @@ def check_messages():
                         user_text = update["message"]["text"]
                         chat_id = update["message"]["chat"]["id"]
                         
-                        # בדיקה אם ההודעה מכילה קישור של אלי אקספרס
                         if "aliexpress" in user_text.lower() or "aliex.press" in user_text.lower():
                             print(f"📩 התקבל קישור לעיבוד: {user_text}")
                             
                             item_id = extract_item_id(user_text)
                             if item_id:
-                                # בניית קישור השותפים הרשמי שלך
                                 affiliate_link = f"https://aliexpress.com{item_id}.html?trackingId={TRACKING_ID}"
-                                
-                                # שליחה לערוץ הציבורי
                                 send_to_channel(affiliate_link)
                                 
-                                # שליחת אישור אליך לפרטי
                                 requests.post(f"https://telegram.org{TELEGRAM_TOKEN}/sendMessage", json={
                                     "chat_id": chat_id,
                                     "text": "✅ הקישור הומר בהצלחה לקישור שותפים ופורסם בערוץ!"
@@ -98,7 +92,7 @@ def check_messages():
                             else:
                                 requests.post(f"https://telegram.org{TELEGRAM_TOKEN}/sendMessage", json={
                                     "chat_id": chat_id,
-                                    "text": "❌ לא הצלחתי לחלץ את מזהה המוצר מהקישור. ודא שזה קישור ישיר למוצר."
+                                    "text": "❌ לא הצלחתי לחלץ את מזהה המוצר מהקישור."
                                 })
         except Exception as e:
             print(f"Error in message loop: {e}")
