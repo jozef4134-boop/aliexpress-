@@ -5,7 +5,7 @@ import threading
 import re
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 
-# 1. שרת דמי יציב עבור Render כדי שהשירות יישאר באוויר
+# 1. שרת דמי יציב עבור Render למניעת קריסות של השירות
 def start_dummy_server():
     try:
         port = int(os.environ.get("PORT", 10000))
@@ -17,9 +17,9 @@ def start_dummy_server():
 
 threading.Thread(target=start_dummy_server, daemon=True).start()
 
-# הגדרות המערכת הרשמיות שלך
+# 2. הגדרות המערכת הרשמיות של הבוט והערוץ שלך
 TELEGRAM_TOKEN = "8810138861:AAFdsvOOFYSF8hDrIffvAHA1PY144V61GcA"
-CHANNEL_ID = "-1002220456108"
+CHAT_ID = "-1002220456108"
 TRACKING_ID = os.environ.get('TRACKING_ID', 'default')
 
 def extract_item_id(url):
@@ -28,7 +28,7 @@ def extract_item_id(url):
     if match:
         return match.group(1)
     
-    # ניסיון נוסף לקישורים קצרים או מובנים אחרת
+    # ניסיון חילוץ נוסף לקישורים מסוגים שונים
     numbers = re.findall(r'(\d{10,20})', url)
     if numbers:
         return numbers[0]
@@ -47,22 +47,27 @@ def send_to_channel(clean_link):
     )
     
     payload = {
-        "chat_id": CHANNEL_ID,
+        "chat_id": CHAT_ID,
         "text": message_text,
-        "parse_mode": "HTML"
+        "parse_mode": "HTML",
+        "disable_web_page_preview": False
     }
+    
     try:
-        res = requests.post(telegram_url, json=payload, timeout=10)
-        print(f"תשובת שליחה לערוץ: {res.text}")
+        response = requests.post(telegram_url, json=payload, timeout=10)
+        if response.status_code == 200:
+            print("🎯 הצלחה מוחלטת! הפוסט החדש עלה בהצלחה לערוץ!")
+        else:
+            print(f"⚠️ טלגרם החזירה שגיאה בשליחה לערוץ: {response.text}")
     except Exception as e:
-        print(f"Error sending to channel: {e}")
+        print(f"❌ שגיאה בשליחת בקשת הרשת לערוץ: {e}")
 
 def check_messages():
-    """לולאה שמקשיבה להודעות שאתה שולח לבוט בפרטי"""
+    """לולאה שמקשיבה להודעות שאתה שולח לבוט בפרטי ומעבדת אותן"""
     last_update_id = 0
     telegram_url = f"https://telegram.org{TELEGRAM_TOKEN}/getUpdates"
     
-    print("🚀 הבוט מקשיב כעת להודעות שלך בטלגרם...")
+    print("🚀 הבוט הנקי והחדש התחיל לפעול ומקשיב להודעות...")
     
     while True:
         try:
