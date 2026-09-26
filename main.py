@@ -2,10 +2,10 @@ import os
 import requests
 import time
 import threading
-import random
+import re
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 
-# 1. שרת דמי יציב עבור Render כדי שהשרות יישאר באוויר בחינם
+# 1. שרת דמי עבור Render למניעת קריסות של השירות
 def start_dummy_server():
     try:
         port = int(os.environ.get("PORT", 10000))
@@ -17,80 +17,89 @@ def start_dummy_server():
 
 threading.Thread(target=start_dummy_server, daemon=True).start()
 
-# 2. מאגר מוצרים אמיתי, מגוון וגדול (ללא בגדי נשים) - הבוט בוחר מפה אוטומטית
-HOT_PRODUCTS_POOL = [
-    {"title": "🧰 סט מברגים חשמלי נטען Xiaomi Mijia 24 ב-1", "id": "1005006135439564", "price": 98.50, "discount": 35, "emoji": "🛠️"},
-    {"title": "🔊 רמקול בלוטות' אלחוטי Anker Soundcore 2 חסין מים", "id": "1005005844231902", "price": 145.00, "discount": 42, "emoji": "🎵"},
-    {"title": "🔋 מטען קיר מהיר Baseus 65W GaN עם 3 יציאות מהירות", "id": "1005006012448512", "price": 89.00, "discount": 50, "emoji": "🔌"},
-    {"title": "🎧 אוזניות אלחוטיות Lenovo LP40 Pro סאונד נקי ומקורי", "id": "1005006135439564", "price": 42.00, "discount": 45, "emoji": "🎧"},
-    {"title": "🚗 קומפרסור / משאבת אוויר דיגיטלית ניידת לרכב Xiaomi", "id": "1005005234112904", "price": 129.00, "discount": 38, "emoji": "🚘"},
-    {"title": "🧹 שואב אבק ידני אלחוטי עוצמתי לרכב ולבית", "id": "1005005991245871", "price": 65.00, "discount": 60, "emoji": "✨"},
-    {"title": "⌚ שעון חכם Xiaomi Mi Band 8 מסך אמולד איכותי", "id": "1005005521443690", "price": 139.00, "discount": 30, "emoji": "⌚"},
-    {"title": "🎮 קונסולת משחקי רטרו ניידת עם אלפי משחקים מובנים", "id": "1005005321456981", "price": 75.00, "discount": 52, "emoji": "🕹️"},
-    {"title": "🔦 פנס יד טקטי עוצמתי לטווח רחוק חסין מים", "id": "1005005112458796", "price": 49.00, "discount": 40, "emoji": "🔦"},
-    {"title": "🐭 עכבר אלחוטי ארגונומי שקט למחשב Logi", "id": "1005005662145893", "price": 85.00, "discount": 33, "emoji": "🖱️"}
-]
+# הגדרות מערכת בסיסיות (הטוקן והערוץ שלך)
+TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN', '8810138861:AAFdsvOOFYSF8hDrIffvAHA1PY144V61GcA')
+CHANNEL_ID = "-1002220456108"
+TRACKING_ID = os.environ.get('TRACKING_ID', 'default')
 
-last_posted_id = None
+def extract_item_id(url):
+    """מציא את ה-ID של המוצר מתוך כל סוג של קישור אלי אקספרס"""
+    match = re.search(match = re.search(r'/item/(\d+)\.html', url))
+    if match:
+        return match.group(1)
+    # ניסיון נוסף לקישורים קצרים או שונים
+    match_short = re.search(r'(\d+)', url)
+    if match_short:
+        return match_short.group(1)
+    return None
 
-def run_auto_affiliate_cycle():
-    global last_posted_id
-    print("🔄 הבוט בוחר מוצר ומייצר קישור שותפים...")
-    
-    # מניעת חזרה על אותו מוצר ברצף
-    available_products = [p for p in HOT_PRODUCTS_POOL if p["id"] != last_posted_id]
-    if not available_products:
-        available_products = HOT_PRODUCTS_POOL
-        
-    chosen_item = random.choice(available_products)
-    last_posted_id = chosen_item["id"]
-    
-    # משיכת הנתונים מהשרת (או שימוש בברירות המחדל הקשיחות שלך)
-    TRACKING_ID = os.environ.get('TRACKING_ID', 'default')
-    TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN', '8810138861:AAFdsvOOFYSF8hDrIffvAHA1PY144V61GcA')
-    
-    # בניית קישור המוכרים האוטומטי (Affiliate Link)
-    affiliate_link = f"https://aliexpress.com{chosen_item['id']}.html?trackingId={TRACKING_ID}"
-    
-    # עיצוב הפוסט הסופי לערוץ
-    message_text = (
-        f"{chosen_item['emoji']} <b>דיל חם מעלי אקספרס!</b> {chosen_item['emoji']}\n\n"
-        f"<b>מוצר:</b> {chosen_item['title']}\n"
-        f"<b>מחיר בשקלים:</b> {chosen_item['price']:.2f} ש''ח\n"
-        f"<b>אחוז הנחה:</b> {chosen_item['discount']}%\n\n"
-        f"🛒 לקנייה ישירה לחצו על הקישור הכחול:\n"
-        f"{affiliate_link}"
-    )
-    
-    # הכתובת המתוקנת והרשמית של טלגרם
+def send_to_channel(clean_link):
+    """שולח את הדיל המעובד ישירות לערוץ הציבורי שלך"""
     telegram_url = f"https://telegram.org{TELEGRAM_TOKEN}/sendMessage"
     
-    payload = {
-        "chat_id": "-1002220456108",
-        "text": message_text,
-        "parse_mode": "HTML",
-        "disable_web_page_preview": False
-    }
+    message_text = (
+        f"🛍️ <b>דיל חדש עלה לערוץ!</b> 🛍️\n\n"
+        f"🔥 מוצר מומלץ מאלי אקספרס שנמצא עבורכם!\n\n"
+        f"🛒 <b>לקנייה ישירה לחצו על הקישור הכחול:</b>\n"
+        f"{clean_link}"
+    )
     
+    payload = {
+        "chat_id": CHANNEL_ID,
+        "text": message_text,
+        "parse_mode": "HTML"
+    }
     try:
-        response = requests.post(telegram_url, json=payload, timeout=10)
-        if response.status_code == 200:
-            print(f"🎯 הצלחה מוחלטת! המוצר {chosen_item['title']} פורסם בהצלחה בערוץ.")
-        else:
-            print(f"⚠️ טלגרם החזירה שגיאה: {response.text}")
+        requests.post(telegram_url, json=payload, timeout=10)
+        print("🎯 הפוסט נשלח בהצלחה לערוץ!")
     except Exception as e:
-        print(f"❌ שגיאה בשליחה: {e}")
+        print(f"Error sending to channel: {e}")
 
-def main_loop():
-    print("🚀 הבוט החל לפעול באופן אוטומטי לחלוטין ברקע!")
+def check_messages():
+    """בודק הודעות חדשות שאתה שולח לבוט בפרטי"""
+    last_update_id = 0
+    telegram_url = f"https://telegram.org{TELEGRAM_TOKEN}/getUpdates"
+    
+    print("🚀 הבוט מקשיב כעת להודעות שלך בטלגרם...")
+    
     while True:
         try:
-            run_auto_affiliate_cycle()
+            payload = {"offset": last_update_id + 1, "timeout": 30}
+            response = requests.get(telegram_url, params=payload, timeout=35).json()
+            
+            if "result" in response:
+                for update in response["result"]:
+                    last_update_id = update["update_id"]
+                    
+                    if "message" in update and "text" in update["message"]:
+                        user_text = update["message"]["text"]
+                        chat_id = update["message"]["chat"]["id"]
+                        
+                        # בדיקה אם המשתמש שלח קישור של אלי אקספרס
+                        if "aliexpress.com" in user_text or "aliex.press" in user_text:
+                            print(f"📩 התקבל קישור מהמשתמש: {user_text}")
+                            
+                            item_id = extract_item_id(user_text)
+                            if item_id:
+                                # בניית קישור השותפים הרשמי שלך
+                                affiliate_link = f"https://aliexpress.com{item_id}.html?trackingId={TRACKING_ID}"
+                                
+                                # שליחה לערוץ
+                                send_to_channel(affiliate_link)
+                                
+                                # החזרת תשובה ל משתמש בפרטי שהצליח
+                                requests.post(f"https://telegram.org{TELEGRAM_TOKEN}/sendMessage", json={
+                                    "chat_id": chat_id,
+                                    "text": "✅ הקישור הומר בהצלחה לקישור שותפים ופורסם בערוץ!"
+                                })
+                            else:
+                                requests.post(f"https://telegram.org{TELEGRAM_TOKEN}/sendMessage", json={
+                                    "chat_id": chat_id,
+                                    "text": "❌ לא הצלחתי לזהות את מזהה המוצר בקישור ששלחת."
+                                })
         except Exception as e:
-            print(f"שגיאה במחזור הריצה: {e}")
-        
-        # זמן פרסום: בכל 15 דקות (900 שניות) פוסט חדש עולה לבד לערוץ
-        time.sleep(900)
+            print(f"Error in message loop: {e}")
+        time.sleep(2)
 
 if __name__ == "__main__":
-    main_loop()
+    check_messages()
