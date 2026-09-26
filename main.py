@@ -37,7 +37,7 @@ def extract_item_id(url):
 
 def send_to_channel(clean_link):
     """שולח את הדיל המעובד ישירות לערוץ הציבורי שלך"""
-    telegram_url = f"https://telegram.org{TELEGRAM_TOKEN}/sendMessage"
+    telegram_url = "https://telegram.org"
     
     message_text = (
         f"🛍️ <b>דיל חדש עלה לערוץ!</b> 🛍️\n\n"
@@ -65,7 +65,7 @@ def send_to_channel(clean_link):
 def check_messages():
     """לולאה שמקשיבה להודעות שאתה שולח לבוט בפרטי ומעבדת אותן"""
     last_update_id = 0
-    telegram_url = f"https://telegram.org{TELEGRAM_TOKEN}/getUpdates"
+    telegram_url = "https://telegram.org"
     
     print("🚀 הבוט הנקי והחדש התחיל לפעול ומקשיב להודעות...")
     
@@ -90,12 +90,12 @@ def check_messages():
                                 affiliate_link = f"https://aliexpress.com{item_id}.html?trackingId={TRACKING_ID}"
                                 send_to_channel(affiliate_link)
                                 
-                                requests.post(f"https://telegram.org{TELEGRAM_TOKEN}/sendMessage", json={
+                                requests.post("https://telegram.org", json={
                                     "chat_id": chat_id,
                                     "text": "✅ הקישור הומר בהצלחה לקישור שותפים ופורסם בערוץ!"
                                 })
                             else:
-                                requests.post(f"https://telegram.org{TELEGRAM_TOKEN}/sendMessage", json={
+                                requests.post("https://telegram.org", json={
                                     "chat_id": chat_id,
                                     "text": "❌ לא הצלחתי לחלץ את מזהה המוצר מהקישור."
                                 })
