@@ -4,42 +4,52 @@ import time
 import threading
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 
-# 1. שרת דמי עבור Render
+# 1. שרת דמי עבור Render למניעת קריסות
 def start_dummy_server():
     try:
         port = int(os.environ.get("PORT", 10000))
         server = HTTPServer(('0.0.0.0', port), SimpleHTTPRequestHandler)
-        print(f"Dummy server started on port {port}")
+        print(f"Dummy server running on port {port}")
         server.serve_forever()
     except Exception as e:
         print(f"Dummy server error: {e}")
 
 threading.Thread(target=start_dummy_server, daemon=True).start()
 
-# 2. נתוני הבוט והערוץ שלך
-TOKEN = "8810138861:AAFdsv00FYSF6hDrIffvAHA1PY144V61GcA"
+# 2. הנתונים המדויקים של הבוט והערוץ שלך
+TOKEN = "8810138861:AAFdsv00FYSF8hDrIffvAHA1PY144V61GcA"
 CHANNEL_ID = "-1002220456108"
 
-def test_telegram_connection():
-    print("🔍 מתחיל בדיקת קשר ישירה מול טלגרם...")
-    time.sleep(5)  # המתנה קלה שהשרת יתייצב
+def send_immediate_activation_message():
+    print("🔥 מפעיל שליחה מיידית לערוץ טלגרם...")
     
     url = f"https://telegram.org{TOKEN}/sendMessage"
+    
+    # תוכן ההודעה המיידית
     payload = {
         "chat_id": CHANNEL_ID,
-        "text": "📢 הודעת בדיקה: השרת ב-Render מחובר בהצלחה לערוץ הטלגרם!"
+        "text": "📢 הערוץ פעיל רשמית! הבוט מחובר ברקע ועובד.",
+        "parse_mode": "HTML"
     }
     
     try:
-        response = requests.post(url, json=payload, timeout=15)
-        print(f"📡 קוד תגובה מטלגרם: {response.status_code}")
-        print(f"📝 תשובת השרת של טלגרם: {response.text}")
+        # שליחה ישירה ללא המתנה
+        response = requests.post(url, json=payload, timeout=10)
+        print(f"📡 קוד סטטוס מטלגרם: {response.status_code}")
+        print(f"📝 תשובה רשמית משרתי טלגרם: {response.text}")
+        
+        if response.status_code == 200:
+            print("🎯 הצלחה! ההודעה עלתה לערוץ בהצלחה מרובה.")
+        else:
+            print("⚠️ טלגרם סירבה לקבל את ההודעה. בדוק את השגיאה למעלה.")
+            
     except Exception as e:
-        print(f"❌ שגיאת רשת חמורה בניסיון לפנות לטלגרם: {e}")
+        print(f"❌ שגיאת תקשורת חמורה מול טלגרם: {e}")
 
 if __name__ == "__main__":
-    test_telegram_connection()
+    # הפעלה מיידית ברגע שהקוד נדלק
+    send_immediate_activation_message()
     
-    # השארת השרת פתוח בשביל הלוגים
+    # השארת התהליך באוויר
     while True:
-        time.sleep(10)
+        time.sleep(5)
