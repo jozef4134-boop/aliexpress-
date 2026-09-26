@@ -5,7 +5,7 @@ import threading
 import re
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 
-# 1. שרת דמי עבור Render למניעת קריסות של השירות
+# 1. שרת דמי יציב עבור Render כדי שהשירות יישאר באוויר
 def start_dummy_server():
     try:
         port = int(os.environ.get("PORT", 10000))
@@ -17,20 +17,23 @@ def start_dummy_server():
 
 threading.Thread(target=start_dummy_server, daemon=True).start()
 
-# הגדרות מערכת בסיסיות (הטוקן והערוץ שלך)
-TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN', '8810138861:AAFdsvOOFYSF8hDrIffvAHA1PY144V61GcA')
+# הגדרות המערכת הרשמיות שלך
+TELEGRAM_TOKEN = "8810138861:AAFdsvOOFYSF8hDrIffvAHA1PY144V61GcA"
 CHANNEL_ID = "-1002220456108"
 TRACKING_ID = os.environ.get('TRACKING_ID', 'default')
 
 def extract_item_id(url):
-    """מוצא את ה-ID של המוצר מתוך כל סוג של קישור אלי אקספרס"""
+    """מחלץ את מזהה המוצר מתוך כל סוג של קישור אלי אקספרס (קצר או ארוך)"""
+    # חיפוש לפי המבנה הסטנדרטי /item/NUMBER.html
     match = re.search(r'/item/(\d+)\.html', url)
     if match:
         return match.group(1)
-    # ניסיון נוסף לקישורים קצרים או שונים
-    match_short = re.search(r'(\d+)', url)
-    if match_short:
-        return match_short.group(1)
+    
+    # חיפוש כל רצף מספרים ארוך בקישור שמתאים ל-ID של מוצר
+    numbers = re.findall(r'(\d{10,20})', url)
+    if numbers:
+        return numbers[0]
+        
     return None
 
 def send_to_channel(clean_link):
@@ -50,13 +53,13 @@ def send_to_channel(clean_link):
         "parse_mode": "HTML"
     }
     try:
-        requests.post(telegram_url, json=payload, timeout=10)
-        print("🎯 הפוסט נשלח בהצלחה לערוץ!")
+        res = requests.post(telegram_url, json=payload, timeout=10)
+        print(f"תשובת שליחה לערוץ: {res.text}")
     except Exception as e:
         print(f"Error sending to channel: {e}")
 
 def check_messages():
-    """בודק הודעות חדשות שאתה שולח לבוט בפרטי"""
+    """לולאה שמקשיבה להודעות שאתה שולח לבוט בפרטי"""
     last_update_id = 0
     telegram_url = f"https://telegram.org{TELEGRAM_TOKEN}/getUpdates"
     
@@ -64,8 +67,8 @@ def check_messages():
     
     while True:
         try:
-            payload = {"offset": last_update_id + 1, "timeout": 30}
-            response = requests.get(telegram_url, params=payload, timeout=35).json()
+            payload = {"offset": last_update_id + 1, "timeout": 20}
+            response = requests.get(telegram_url, params=payload, timeout=25).json()
             
             if "result" in response:
                 for update in response["result"]:
@@ -75,19 +78,19 @@ def check_messages():
                         user_text = update["message"]["text"]
                         chat_id = update["message"]["chat"]["id"]
                         
-                        # בדיקה אם המשתמש שלח קישור של אלי אקספרס
-                        if "aliexpress.com" in user_text or "aliex.press" in user_text:
-                            print(f"📩 התקבל קישור מהמשתמש: {user_text}")
+                        # בדיקה אם ההודעה מכילה קישור של אלי אקספרס
+                        if "aliexpress" in user_text.lower() or "aliex.press" in user_text.lower():
+                            print(f"📩 התקבל קישור לעיבוד: {user_text}")
                             
                             item_id = extract_item_id(user_text)
                             if item_id:
                                 # בניית קישור השותפים הרשמי שלך
                                 affiliate_link = f"https://aliexpress.com{item_id}.html?trackingId={TRACKING_ID}"
                                 
-                                # שליחה לערוץ
+                                # שליחה לערוץ הציבורי
                                 send_to_channel(affiliate_link)
                                 
-                                # החזרת תשובה למשתמש בפרטי שהצליח
+                                # שליחת אישור אליך לפרטי
                                 requests.post(f"https://telegram.org{TELEGRAM_TOKEN}/sendMessage", json={
                                     "chat_id": chat_id,
                                     "text": "✅ הקישור הומר בהצלחה לקישור שותפים ופורסם בערוץ!"
@@ -95,7 +98,7 @@ def check_messages():
                             else:
                                 requests.post(f"https://telegram.org{TELEGRAM_TOKEN}/sendMessage", json={
                                     "chat_id": chat_id,
-                                    "text": "❌ לא הצלחתי לזהות את מזהה המוצר בקישור ששלחת."
+                                    "text": "❌ לא הצלחתי לחלץ את מזהה המוצר מהקישור. ודא שזה קישור ישיר למוצר."
                                 })
         except Exception as e:
             print(f"Error in message loop: {e}")
