@@ -17,7 +17,7 @@ def start_dummy_server():
 
 threading.Thread(target=start_dummy_server, daemon=True).start()
 
-# 2. הגדרות המערכת הרשמיות של הבוט והערוץ שלך
+# 2. הגדרות המערכת הקשיחות של הבוט והערוץ שלך
 TELEGRAM_TOKEN = "8810138861:AAFdsvOOFYSF8hDrIffvAHA1PY144V61GcA"
 CHAT_ID = "-1002220456108"
 TRACKING_ID = os.environ.get('TRACKING_ID', 'default')
@@ -37,7 +37,7 @@ def extract_item_id(url):
 
 def send_to_channel(clean_link):
     """שולח את הדיל המעובד ישירות לערוץ הציבורי שלך"""
-    telegram_url = "https://telegram.org"
+    telegram_url = f"https://telegram.org{TELEGRAM_TOKEN}/sendMessage"
     
     message_text = (
         f"🛍️ <b>דיל חדש עלה לערוץ!</b> 🛍️\n\n"
@@ -63,17 +63,25 @@ def send_to_channel(clean_link):
         print(f"❌ שגיאה בשליחת בקשת הרשת לערוץ: {e}")
 
 def check_messages():
-    """לולאה שמקשיבה להודעות שאתה שולח לבוט בפרטי ומעבדת אותן"""
+    """לולאה יציבה וחסינה שממתינה להודעות חדשות בלי להציק לשרתים"""
     last_update_id = 0
-    telegram_url = "https://telegram.org"
+    telegram_url = f"https://telegram.org{TELEGRAM_TOKEN}/getUpdates"
     
-    print("🚀 הבוט הנקי והחדש התחיל לפעול ומקשיב להודעות...")
+    print("🚀 הבוט הנקי והחסין התחיל לפעול ומקשיב להודעות...")
     
     while True:
         try:
-            payload = {"offset": last_update_id + 1, "timeout": 20}
-            response = requests.get(telegram_url, params=payload, timeout=25).json()
+            # שימוש ב-timeout=30 של טלגרם (Long Polling) - החיבור נשאר פתוח וממתין בצורה חוקית
+            payload = {"offset": last_update_id + 1, "timeout": 30}
+            res = requests.get(telegram_url, params=payload, timeout=35)
             
+            # אם טלגרם חוסמת זמנית, נמתין קצת וננסה שוב במקום לקרוס
+            if res.status_code != 200:
+                print(f"⚠️ חיבור זמני נחסם על ידי טלגרם (סטטוס {res.status_code}), ממתין 15 שניות...")
+                time.sleep(15)
+                continue
+                
+            response = res.json()
             if "result" in response:
                 for update in response["result"]:
                     last_update_id = update["update_id"]
@@ -90,18 +98,18 @@ def check_messages():
                                 affiliate_link = f"https://aliexpress.com{item_id}.html?trackingId={TRACKING_ID}"
                                 send_to_channel(affiliate_link)
                                 
-                                requests.post("https://telegram.org", json={
+                                requests.post(f"https://telegram.org{TELEGRAM_TOKEN}/sendMessage", json={
                                     "chat_id": chat_id,
                                     "text": "✅ הקישור הומר בהצלחה לקישור שותפים ופורסם בערוץ!"
                                 })
                             else:
-                                requests.post("https://telegram.org", json={
+                                requests.post(f"https://telegram.org{TELEGRAM_TOKEN}/sendMessage", json={
                                     "chat_id": chat_id,
                                     "text": "❌ לא הצלחתי לחלץ את מזהה המוצר מהקישור."
                                 })
         except Exception as e:
-            print(f"Error in message loop: {e}")
-        time.sleep(2)
+            print(f"שגיאה בלולאת ההודעות: {e}")
+            time.sleep(10)  # הגנה מפני קריסות מהירות במקרה של ניתוק רשת
 
 if __name__ == "__main__":
     check_messages()
